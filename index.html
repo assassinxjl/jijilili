@@ -452,6 +452,7 @@
   <div class="modal-box">
     <p class="modal-title">🤖 智能推荐 · API 设置</p>
     <div class="mini-hint">支持任意 OpenAI 兼容接口（如 OpenAI / DeepSeek / Moonshot 等），密钥仅保存在本机浏览器 localStorage 中，不会上传任何服务器。</div>
+    <div class="mini-hint" style="margin-top:6px;color:var(--text-light);">若浏览器提示 Failed to fetch（跨域被拦）：只要「家庭共享」里的 Supabase 已开启，智能推荐会自动经 Supabase 函数代理转发，绕过跨域限制（需先在 Supabase 后台部署 ai-proxy 函数）。</div>
     <div class="field-label">接口地址 Endpoint</div>
     <input class="field-input" id="apiEndpoint" placeholder="https://api.openai.com/v1/chat/completions">
     <div class="field-label">API Key</div>
@@ -1148,20 +1149,57 @@ async function callAIRecommend(){
   var prompt = '我冰箱里现在有这些食材：'+ingredients+'。请据此推荐1-3道适合今天做的家常菜，说明简单做法要点，用中文回答，语言简洁。';
   resultEl.textContent = '正在为您智能推荐，请稍候...';
   try{
-    var resp = await fetch(cfg.endpoint, {
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.key},
-      body: JSON.stringify({ model: cfg.model||'gpt-3.5-turbo', messages:[{role:'user', content: prompt}] })
-    });
-    var data = await resp.json();
-    var text = '';
-    if(data.choices && data.choices[0] && data.choices[0].message){ text = data.choices[0].message.content; }
-    else if(data.content && data.content[0] && data.content[0].text){ text = data.content[0].text; }
-    else { text = JSON.stringify(data); }
+    var text;
+    if(syncEnabled && SUPABASE_URL && SUPABASE_ANON){
+      text = await callAIViaProxy(cfg, prompt);   // 走 Supabase 函数代理，规避浏览器跨域
+    }else{
+      text = await callAIDirect(cfg, prompt);
+    }
     resultEl.textContent = text || '（未获得有效回复，请检查接口返回格式）';
   }catch(err){
-    resultEl.textContent = '推荐失败，请检查 API 设置或网络连接：'+err.message;
+    var msg = err && err.message ? err.message : String(err);
+    if(msg.indexOf('Failed to fetch')>=0 && !syncEnabled){
+      msg += '（可能是浏览器跨域限制；开启家庭共享的 Supabase 后可自动走代理）';
+    }
+    resultEl.textContent = '推荐失败，请检查 API 设置或网络连接：'+msg;
   }
+}
+async function callAIDirect(cfg, prompt){
+  var resp = await fetch(cfg.endpoint, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.key},
+    body: JSON.stringify({ model: cfg.model||'gpt-3.5-turbo', messages:[{role:'user', content: prompt}] })
+  });
+  if(!resp.ok){ throw new Error('HTTP '+resp.status); }
+  var data = await resp.json();
+  return extractAIText(data);
+}
+async function callAIViaProxy(cfg, prompt){
+  var fnUrl = (SUPABASE_URL||'').replace(/\/+$/,'') + '/functions/v1/ai-proxy';
+  var resp = await fetch(fnUrl, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON,'Authorization':'Bearer '+SUPABASE_ANON},
+    body: JSON.stringify({
+      endpoint: cfg.endpoint,
+      apiKey: cfg.key,
+      model: cfg.model||'glm-5.1',
+      messages:[{role:'user', content: prompt}]
+    })
+  });
+  if(!resp.ok){
+    var ed = await resp.json().catch(function(){return {};});
+    throw new Error('代理函数返回 '+resp.status + (ed && ed.error ? ('：'+ed.error) : '（可能未部署 ai-proxy 函数，请在 Supabase 后台部署）'));
+  }
+  var data = await resp.json();
+  return extractAIText(data);
+}
+function extractAIText(data){
+  if(!data) return '';
+  if(data.error) return '（接口报错：'+data.error+'）';
+  if(data.choices && data.choices[0] && data.choices[0].message){ return data.choices[0].message.content; }
+  if(data.content && data.content[0] && data.content[0].text){ return data.content[0].text; }
+  if(typeof data === 'string') return data;
+  return JSON.stringify(data);
 }
 
 /* =========================================================
