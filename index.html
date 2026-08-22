@@ -196,10 +196,14 @@
   }
   .user-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
   .user-select{border:none;background:transparent;font-size:13px;color:var(--text);font-weight:600;outline:none;max-width:110px;}
-  .user-add-btn{
-    width:26px;height:26px;border-radius:50%;border:none;background:var(--accent);color:#fff;
-    cursor:pointer;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;
-  }
+    .user-add-btn{
+      width:26px;height:26px;border-radius:50%;border:none;background:var(--accent);color:#fff;
+      cursor:pointer;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    }
+    .user-del-btn{
+      width:26px;height:26px;border-radius:50%;border:none;background:#FFE4CC;color:var(--text);
+      cursor:pointer;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    }
 
   .card{
     background:var(--card);
@@ -358,7 +362,7 @@
     .sidebar.collapsed{transform:translateX(-100%);box-shadow:none;}
     .sidebar:not(.collapsed){min-width:210px;max-width:210px;}
     .sidebar:not(.collapsed) .sidebar-title,.sidebar:not(.collapsed) .label-text{display:inline;}
-    .main{padding:16px 16px 60px 16px;margin-left:64px;}
+    .main{padding:16px 16px 60px 16px;margin-left:0;}
     .app.sb-open .main{opacity:.4;}
     .recipe-row{flex-direction:column;}
     .menu-toggle{display:flex;}
@@ -395,6 +399,7 @@
         <span class="user-dot" id="userDot"></span>
         <select class="user-select" id="userSelect"></select>
         <button class="user-add-btn" id="userAddBtn" title="添加家庭成员">＋</button>
+        <button class="user-del-btn" id="userDelBtn" title="删除当前成员">－</button>
       </div>
     </div>
     <div id="content"></div>
@@ -465,7 +470,6 @@
   <div class="modal-box">
     <p class="modal-title">ℹ️ 关于「吉吉利利」</p>
     <div class="mini-hint" style="font-size:13px;line-height:1.9;">
-      · 所有数据保存在本机浏览器的 localStorage 中，不会上传到任何服务器。<br>
       · 同一浏览器打开的多个标签页会自动实时同步数据（收纳、待办等）。<br>
       · 已开启「家庭共享码」后，输入相同家庭码即可在<b>不同设备 / 不同浏览器之间实时同步</b>同一份数据；未设置家庭码时数据仅存本机，换设备请用「导出 / 导入数据」手动搬家。<br>
       · 手机上可通过浏览器菜单「添加到主屏幕」把它变成一个图标，效果因手机浏览器而略有差异。<br>
@@ -489,7 +493,7 @@
     <div class="mini-hint" style="font-size:13px;line-height:1.8;">
       输入同一个「家庭码」，你和家人就能看到并编辑<b>同一份</b>数据（冰箱、食谱、待办等），改动会自动实时同步。家庭码就是你们的共享钥匙，告诉家人即可一起用。
     </div>
-    <input id="familyCodeInput" placeholder="输入 8 位家庭码" style="margin-top:12px;width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:14px;">
+    <input id="familyCodeInput" placeholder="输入 6 位家庭码" style="margin-top:12px;width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:14px;">
     <div id="familyCodeHint" class="mini-hint" style="color:var(--danger);font-size:12px;margin-top:6px;"></div>
     <div class="modal-actions" style="justify-content:space-between;margin-top:14px;">
       <button class="btn btn-soft" id="familyCreateBtn">随机生成并进入</button>
@@ -530,7 +534,7 @@ function setFamilyCode(code){ try{ localStorage.setItem(FAMILYCODE_KEY, code); }
 function genFamilyCode(){
   var s = 'abcdefghijklmnopqrstuvwxyz0123456789';
   var out = '';
-  for(var i=0;i<8;i++){ out += s.charAt(Math.floor(Math.random()*s.length)); }
+  for(var i=0;i<6;i++){ out += s.charAt(Math.floor(Math.random()*s.length)); }
   return out;
 }
 function saveStateLocalOnly(){
@@ -619,7 +623,7 @@ var DECO_EMOJI = ['🥕','🍅','🥬','🍞','🧁','🍪','🥄','🫖','🌿'
 
 function defaultState(){
   return {
-    users: [{id:'u_'+Date.now(), name:'家人', color: COLORS[0]}],
+    users: [],
     currentUserId: null,
     modules: [
       {id:'m_chi', name:'吃吃吃吃', icon:'🍳', enabled:true, order:0, children:[
@@ -656,8 +660,8 @@ function loadState(){
 
 function normalizeState(){
   if(!state) state = defaultState();
-  if(!state.users || !state.users.length){ state.users = defaultState().users; }
-  if(!state.currentUserId){ state.currentUserId = state.users[0].id; }
+  if(!state.users) state.users = [];
+  if(!state.currentUserId && state.users.length){ state.currentUserId = state.users[0].id; }
   if(!state.fridge) state.fridge = {chilled:[],frozen:[]};
   if(!state.recipeRecords) state.recipeRecords = [];
   if(!state.apiConfig) state.apiConfig = {endpoint:'',key:'',model:'gpt-3.5-turbo'};
@@ -711,7 +715,9 @@ function esc(s){
 }
 function findUser(id){
   var u = state.users.find(function(x){return x.id===id;});
-  return u || state.users[0];
+  if(!u) u = state.users[0];
+  if(!u) u = {id:null, name:'(未指定)', color:'#CCC'};
+  return u;
 }
 function openModal(id){ document.getElementById(id).classList.add('show'); }
 window.closeModal = function(id){ document.getElementById(id).classList.remove('show'); };
@@ -775,10 +781,20 @@ function renderSidebar(){
    ========================================================= */
 function renderUserBox(){
   var sel = document.getElementById('userSelect');
-  sel.innerHTML = state.users.map(function(u){
-    return '<option value="'+u.id+'"'+(u.id===state.currentUserId?' selected':'')+'>'+esc(u.name)+'</option>';
-  }).join('');
-  document.getElementById('userDot').style.background = findUser(state.currentUserId).color;
+  var delBtn = document.getElementById('userDelBtn');
+  if(!state.users.length){
+    sel.innerHTML = '<option>＋ 添加成员</option>';
+    sel.disabled = true;
+    document.getElementById('userDot').style.background = '#CCC';
+    delBtn.style.display = 'none';
+  }else{
+    sel.disabled = false;
+    sel.innerHTML = state.users.map(function(u){
+      return '<option value="'+u.id+'"'+(u.id===state.currentUserId?' selected':'')+'>'+esc(u.name)+'</option>';
+    }).join('');
+    document.getElementById('userDot').style.background = findUser(state.currentUserId).color;
+    delBtn.style.display = '';
+  }
   sel.onchange = function(){
     state.currentUserId = sel.value;
     saveState();
@@ -793,6 +809,14 @@ function renderUserBox(){
     state.currentUserId = u.id;
     saveState();
     renderUserBox();
+  };
+  delBtn.onclick = function(){
+    if(!state.users.length) return;
+    var u = findUser(state.currentUserId);
+    if(!confirm('确定删除成员「'+(u?u.name:'')+'」吗？')) return;
+    state.users = state.users.filter(function(x){return x.id!==u.id;});
+    state.currentUserId = state.users.length ? state.users[0].id : null;
+    saveState(); renderUserBox();
   };
 }
 
