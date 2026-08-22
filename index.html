@@ -11,7 +11,7 @@
 <title>吉吉利利 · 家庭管理工作台</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-512.png">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- 同步层已改为直接调用 Supabase REST（fetch），无需外部 CDN，国内网络更稳 -->
 <style>
   :root{
     --bg:#FFF7ED;
@@ -517,12 +517,11 @@ var SUPABASE_URL = 'https://lrjiiacbzpcfpstxakuu.supabase.co';   // Supabase 项
 var SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxyamlpYWNienBjZnBzdHhha3V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczNjE3MTAsImV4cCI6MjEwMjkzNzcxMH0.EkoYcU_L7nn7A44fj4Q86yVdPxwL4L1VWhinS53MkMA';   // anon public key
 var FAMILYCODE_KEY = 'jjll_family_code';
 
-var sbClient = null;
-if(SUPABASE_URL && SUPABASE_ANON && typeof supabase !== 'undefined'){
-  try{ sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON); }catch(e){ sbClient = null; }
-}
-
-var currentChannel = null;
+var syncEnabled = !!(SUPABASE_URL && SUPABASE_ANON);
+function sbBase(){ return (SUPABASE_URL || '').replace(/\/+$/,'') + '/rest/v1/families'; }
+function sbHeaders(){ return { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON, 'Content-Type': 'application/json' }; }
+var currentChannel = null;   // 复用作轮询定时器
+var lastSeenTs = 0;
 var justSynced = 0;
 var syncTimer = null;
 
@@ -538,41 +537,61 @@ function saveStateLocalOnly(){
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
 }
 function syncSave(){
-  if(!sbClient) return;
+  if(!syncEnabled) return;
   var code = getFamilyCode();
   if(!code) return;
   if(syncTimer) clearTimeout(syncTimer);
   syncTimer = setTimeout(function(){
-    justSynced = Date.now();
+    var now = Date.now();
+    justSynced = now; lastSeenTs = now;
     try{
-      sbClient.from('families').upsert({ code: code, data: state, updated_at: new Date().toISOString() });
+      fetch(sbBase(), {
+        method:'POST',
+        headers: Object.assign({ 'Prefer': 'resolution=merge-duplicates' }, sbHeaders()),
+        body: JSON.stringify({ code: code, data: state, updated_at: new Date(now).toISOString() })
+      }).catch(function(){});
     }catch(e){}
   }, 800);
 }
 function syncLoad(cb){
-  if(!sbClient){ if(cb) cb(); return; }
+  if(!syncEnabled){ if(cb) cb(); return; }
   var code = getFamilyCode();
   if(!code){ if(cb) cb(); return; }
-  sbClient.from('families').select('data, updated_at').eq('code', code).maybeSingle().then(function(res){
-    if(res && !res.error && res.data && res.data.data){
-      state = res.data.data;
-      normalizeState();
-      saveStateLocalOnly();
-    }
-    if(cb) cb();
-  }).catch(function(){ if(cb) cb(); });
+  fetch(sbBase() + '?code=eq.' + encodeURIComponent(code) + '&select=data,updated_at&limit=1', { headers: sbHeaders() })
+    .then(function(r){ return r.json(); })
+    .then(function(rows){
+      if(Array.isArray(rows) && rows.length && rows[0] && rows[0].data){
+        state = rows[0].data;
+        normalizeState();
+        saveStateLocalOnly();
+        var ts = new Date(rows[0].updated_at).getTime();
+        if(ts) lastSeenTs = ts;
+      }
+      if(cb) cb();
+    })
+    .catch(function(){ if(cb) cb(); });
 }
+/* 用定时轮询代替 WebSocket 实时订阅：仅依赖 REST，国内网络更可靠 */
 function subscribeRealtime(){
-  if(!sbClient) return;
+  if(!syncEnabled) return;
   var code = getFamilyCode();
   if(!code) return;
-  if(currentChannel){ try{ sbClient.removeChannel(currentChannel); }catch(e){} currentChannel = null; }
-  currentChannel = sbClient.channel('fam-'+code)
-    .on('postgres_changes', { event:'*', schema:'public', table:'families', filter:'code=eq.'+code }, function(){
-      if(Date.now() - justSynced < 1500) return;   // 忽略自己刚保存触发的回声
-      syncLoad(function(){ renderAll(); });
-    })
-    .subscribe();
+  if(currentChannel){ clearInterval(currentChannel); currentChannel = null; }
+  currentChannel = setInterval(function(){
+    if(Date.now() - justSynced < 2000) return;   // 刚保存过，跳过自身回声
+    var c = getFamilyCode();
+    if(!c) return;
+    fetch(sbBase() + '?code=eq.' + encodeURIComponent(c) + '&select=updated_at&limit=1', { headers: sbHeaders() })
+      .then(function(r){ return r.json(); })
+      .then(function(rows){
+        if(Array.isArray(rows) && rows.length && rows[0].updated_at){
+          var ts = new Date(rows[0].updated_at).getTime();
+          if(ts && ts > lastSeenTs){
+            syncLoad(function(){ renderAll(); });   // syncLoad 会刷新 lastSeenTs，避免重复拉取
+          }
+        }
+      }).catch(function(){});
+  }, 4000);
 }
 function enterFamily(code){
   setFamilyCode(code);
@@ -1398,7 +1417,7 @@ function init(){
   renderAll();
   renderDeco();
   setupPWA();
-  if(sbClient){
+  if(syncEnabled){
     if(getFamilyCode()){
       syncLoad(function(){ renderAll(); subscribeRealtime(); });
     }else{

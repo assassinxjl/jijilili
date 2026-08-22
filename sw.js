@@ -1,5 +1,5 @@
 // 吉吉利利 离线缓存 Service Worker
-const CACHE = 'jjll-v1';
+const CACHE = 'jjll-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -26,16 +26,16 @@ self.addEventListener('activate', function (e) {
   );
 });
 
+// 网络优先：部署新版本后下次访问即生效；离线时回退缓存
 self.addEventListener('fetch', function (e) {
   if (e.request.method !== 'GET') return;
   e.respondWith(
-    caches.match(e.request).then(function (cached) {
-      if (cached) return cached;
-      return fetch(e.request).then(function (resp) {
-        var copy = resp.clone();
-        caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
-        return resp;
-      }).catch(function () { return caches.match('./'); });
+    fetch(e.request).then(function (resp) {
+      var copy = resp.clone();
+      caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
+      return resp;
+    }).catch(function () {
+      return caches.match(e.request).then(function (c) { return c || caches.match('./'); });
     })
   );
 });
