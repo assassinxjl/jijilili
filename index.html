@@ -452,13 +452,15 @@
   <div class="modal-box">
     <p class="modal-title">🤖 智能推荐 · API 设置</p>
     <div class="mini-hint">支持任意 OpenAI 兼容接口（如 OpenAI / DeepSeek / Moonshot 等），密钥仅保存在本机浏览器 localStorage 中，不会上传任何服务器。</div>
-    <div class="mini-hint" style="margin-top:6px;color:var(--text-light);">若浏览器提示 Failed to fetch（跨域被拦）：只要「家庭共享」里的 Supabase 已开启，智能推荐会自动经 Supabase 函数代理转发，绕过跨域限制（需先在 Supabase 后台部署 ai-proxy 函数）。</div>
+    <div class="mini-hint" style="margin-top:6px;color:var(--text-light);">若浏览器提示 Failed to fetch（跨域被拦）：可在下方「代理地址」填入一个代理（如 Cloudflare Worker）；留空则尝试走 Supabase 函数代理（需部署 ai-proxy，且仅对部分接口有效）。</div>
     <div class="field-label">接口地址 Endpoint</div>
     <input class="field-input" id="apiEndpoint" placeholder="https://api.openai.com/v1/chat/completions">
     <div class="field-label">API Key</div>
     <input class="field-input" id="apiKey" placeholder="sk-xxxxxxxx" type="password">
     <div class="field-label">模型名称 Model</div>
     <input class="field-input" id="apiModel" placeholder="gpt-3.5-turbo">
+    <div class="field-label">代理地址（可选，解决跨域）</div>
+    <input class="field-input" id="apiProxy" placeholder="https://xxx.workers.dev/  或留空走 Supabase 代理">
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modalApi')">取消</button>
       <button class="btn btn-primary" id="apiSaveBtn">保存设置</button>
@@ -637,7 +639,7 @@ function defaultState(){
     ],
     fridge:{ chilled:[], frozen:[] },
     recipeRecords:[],
-    apiConfig:{endpoint:'', key:'', model:'gpt-3.5-turbo'},
+    apiConfig:{endpoint:'', key:'', model:'gpt-3.5-turbo', proxyUrl:''},
     todos:[],
     customNotes:{}
   };
@@ -665,7 +667,8 @@ function normalizeState(){
   if(!state.currentUserId && state.users.length){ state.currentUserId = state.users[0].id; }
   if(!state.fridge) state.fridge = {chilled:[],frozen:[]};
   if(!state.recipeRecords) state.recipeRecords = [];
-  if(!state.apiConfig) state.apiConfig = {endpoint:'',key:'',model:'gpt-3.5-turbo'};
+  if(!state.apiConfig) state.apiConfig = {endpoint:'',key:'',model:'gpt-3.5-turbo',proxyUrl:''};
+  else if(!('proxyUrl' in state.apiConfig)) state.apiConfig.proxyUrl = '';
   if(!state.todos) state.todos = [];
   if(!state.customNotes) state.customNotes = {};
 }
@@ -1125,13 +1128,15 @@ function openApiModal(){
   document.getElementById('apiEndpoint').value = state.apiConfig.endpoint||'';
   document.getElementById('apiKey').value = state.apiConfig.key||'';
   document.getElementById('apiModel').value = state.apiConfig.model||'gpt-3.5-turbo';
+  document.getElementById('apiProxy').value = state.apiConfig.proxyUrl||'';
   openModal('modalApi');
 }
 document.getElementById('apiSaveBtn').addEventListener('click', function(){
   state.apiConfig = {
     endpoint: document.getElementById('apiEndpoint').value.trim(),
     key: document.getElementById('apiKey').value.trim(),
-    model: document.getElementById('apiModel').value.trim() || 'gpt-3.5-turbo'
+    model: document.getElementById('apiModel').value.trim() || 'gpt-3.5-turbo',
+    proxyUrl: document.getElementById('apiProxy').value.trim()
   };
   saveState(); closeModal('modalApi');
 });
@@ -1150,16 +1155,22 @@ async function callAIRecommend(){
   resultEl.textContent = '正在为您智能推荐，请稍候...';
   try{
     var text;
-    if(syncEnabled && SUPABASE_URL && SUPABASE_ANON){
-      text = await callAIViaProxy(cfg, prompt);   // 走 Supabase 函数代理，规避浏览器跨域
+    var proxyUrl = (cfg.proxyUrl||'').trim();
+    var useSupabaseAuth = false;
+    if(!proxyUrl && syncEnabled && SUPABASE_URL && SUPABASE_ANON){
+      proxyUrl = (SUPABASE_URL||'').replace(/\/+$/,'') + '/functions/v1/ai-proxy';
+      useSupabaseAuth = true;
+    }
+    if(proxyUrl){
+      text = await callAIViaProxy(cfg, prompt, proxyUrl, useSupabaseAuth);
     }else{
       text = await callAIDirect(cfg, prompt);
     }
     resultEl.textContent = text || '（未获得有效回复，请检查接口返回格式）';
   }catch(err){
     var msg = err && err.message ? err.message : String(err);
-    if(msg.indexOf('Failed to fetch')>=0 && !syncEnabled){
-      msg += '（可能是浏览器跨域限制；开启家庭共享的 Supabase 后可自动走代理）';
+    if(msg.indexOf('Failed to fetch')>=0 && !cfg.proxyUrl){
+      msg += '（浏览器跨域被拦；请在「API 设置」填写一个代理地址，或使用支持 CORS 的接口）';
     }
     resultEl.textContent = '推荐失败，请检查 API 设置或网络连接：'+msg;
   }
@@ -1174,11 +1185,12 @@ async function callAIDirect(cfg, prompt){
   var data = await resp.json();
   return extractAIText(data);
 }
-async function callAIViaProxy(cfg, prompt){
-  var fnUrl = (SUPABASE_URL||'').replace(/\/+$/,'') + '/functions/v1/ai-proxy';
-  var resp = await fetch(fnUrl, {
+async function callAIViaProxy(cfg, prompt, proxyUrl, useSupabaseAuth){
+  var headers = {'Content-Type':'application/json'};
+  if(useSupabaseAuth){ headers['apikey'] = SUPABASE_ANON; headers['Authorization'] = 'Bearer '+SUPABASE_ANON; }
+  var resp = await fetch(proxyUrl, {
     method:'POST',
-    headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON,'Authorization':'Bearer '+SUPABASE_ANON},
+    headers: headers,
     body: JSON.stringify({
       endpoint: cfg.endpoint,
       apiKey: cfg.key,
@@ -1187,10 +1199,12 @@ async function callAIViaProxy(cfg, prompt){
     })
   });
   if(!resp.ok){
-    var ed = await resp.json().catch(function(){return {};});
-    throw new Error('代理函数返回 '+resp.status + (ed && ed.error ? ('：'+ed.error) : '（可能未部署 ai-proxy 函数，请在 Supabase 后台部署）'));
+    var ed = await resp.text().catch(function(){return '';});
+    throw new Error('代理返回 '+resp.status + (ed ? ('：'+ed.slice(0,200)) : '（检查代理地址是否正确/已部署）'));
   }
-  var data = await resp.json();
+  var raw = await resp.text();
+  var data;
+  try{ data = JSON.parse(raw); }catch(e){ data = raw; }
   return extractAIText(data);
 }
 function extractAIText(data){
