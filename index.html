@@ -11,6 +11,7 @@
 <title>吉吉利利 · 家庭管理工作台</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-512.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --bg:#FFF7ED;
@@ -457,7 +458,7 @@
     <div class="mini-hint" style="font-size:13px;line-height:1.9;">
       · 所有数据保存在本机浏览器的 localStorage 中，不会上传到任何服务器。<br>
       · 同一浏览器打开的多个标签页会自动实时同步数据（收纳、待办等）。<br>
-      · 由于本应用不含后端服务器，<b>无法在不同设备/不同浏览器之间自动同步数据</b>；如需换设备使用，请用下方「导出数据」「导入数据」手动搬家。<br>
+      · 已开启「家庭共享码」后，输入相同家庭码即可在<b>不同设备 / 不同浏览器之间实时同步</b>同一份数据；未设置家庭码时数据仅存本机，换设备请用「导出 / 导入数据」手动搬家。<br>
       · 手机上可通过浏览器菜单「添加到主屏幕」把它变成一个图标，效果因手机浏览器而略有差异。<br>
       · 电脑上可把该 html 文件拖到桌面，双击即可用浏览器打开；也可为浏览器创建桌面快捷方式指向该文件。
     </div>
@@ -465,9 +466,25 @@
       <div style="display:flex;gap:8px;">
         <button class="btn btn-soft" id="exportBtn">导出数据</button>
         <button class="btn btn-soft" id="importBtn">导入数据</button>
+        <button class="btn btn-soft" id="switchFamilyBtn">切换家庭码</button>
         <input type="file" id="importFile" accept="application/json" style="display:none;">
       </div>
       <button class="btn btn-primary" onclick="closeModal('modalAbout')">好的</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-mask" id="modalFamily">
+  <div class="modal-box">
+    <p class="modal-title">👨‍👩‍👧 家庭共享码</p>
+    <div class="mini-hint" style="font-size:13px;line-height:1.8;">
+      输入同一个「家庭码」，你和家人就能看到并编辑<b>同一份</b>数据（冰箱、食谱、待办等），改动会自动实时同步。家庭码就是你们的共享钥匙，告诉家人即可一起用。
+    </div>
+    <input id="familyCodeInput" placeholder="输入 8 位家庭码" style="margin-top:12px;width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:14px;">
+    <div id="familyCodeHint" class="mini-hint" style="color:var(--danger);font-size:12px;margin-top:6px;"></div>
+    <div class="modal-actions" style="justify-content:space-between;margin-top:14px;">
+      <button class="btn btn-soft" id="familyCreateBtn">随机生成并进入</button>
+      <button class="btn btn-primary" id="familyEnterBtn">进入</button>
     </div>
   </div>
 </div>
@@ -480,6 +497,95 @@
    数据层：state 结构 + 读写 + 多标签页同步
    ========================================================= */
 var STORAGE_KEY = 'jjll_state_v1';
+
+/* =========================================================
+   多用户同步配置（Supabase）
+   把下面的 SUPABASE_URL / SUPABASE_ANON 替换成你的项目信息即可
+   （Supabase Dashboard → Project Settings → API）。
+   不填则自动退回纯本地模式，不影响原有功能。
+   ========================================================= */
+var SUPABASE_URL = '';          // 例如 https://xxxx.supabase.co
+var SUPABASE_ANON = '';         // anon public key，以 eyJ 开头
+var FAMILYCODE_KEY = 'jjll_family_code';
+
+var sbClient = null;
+if(SUPABASE_URL && SUPABASE_ANON && typeof supabase !== 'undefined'){
+  try{ sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON); }catch(e){ sbClient = null; }
+}
+
+var currentChannel = null;
+var justSynced = 0;
+var syncTimer = null;
+
+function getFamilyCode(){ try{ return localStorage.getItem(FAMILYCODE_KEY) || ''; }catch(e){ return ''; } }
+function setFamilyCode(code){ try{ localStorage.setItem(FAMILYCODE_KEY, code); }catch(e){} }
+function genFamilyCode(){
+  var s = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  var out = '';
+  for(var i=0;i<8;i++){ out += s.charAt(Math.floor(Math.random()*s.length)); }
+  return out;
+}
+function saveStateLocalOnly(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+}
+function syncSave(){
+  if(!sbClient) return;
+  var code = getFamilyCode();
+  if(!code) return;
+  if(syncTimer) clearTimeout(syncTimer);
+  syncTimer = setTimeout(function(){
+    justSynced = Date.now();
+    try{
+      sbClient.from('families').upsert({ code: code, data: state, updated_at: new Date().toISOString() });
+    }catch(e){}
+  }, 800);
+}
+function syncLoad(cb){
+  if(!sbClient){ if(cb) cb(); return; }
+  var code = getFamilyCode();
+  if(!code){ if(cb) cb(); return; }
+  sbClient.from('families').select('data, updated_at').eq('code', code).maybeSingle().then(function(res){
+    if(res && !res.error && res.data && res.data.data){
+      state = res.data.data;
+      normalizeState();
+      saveStateLocalOnly();
+    }
+    if(cb) cb();
+  }).catch(function(){ if(cb) cb(); });
+}
+function subscribeRealtime(){
+  if(!sbClient) return;
+  var code = getFamilyCode();
+  if(!code) return;
+  if(currentChannel){ try{ sbClient.removeChannel(currentChannel); }catch(e){} currentChannel = null; }
+  currentChannel = sbClient.channel('fam-'+code)
+    .on('postgres_changes', { event:'*', schema:'public', table:'families', filter:'code=eq.'+code }, function(){
+      if(Date.now() - justSynced < 1500) return;   // 忽略自己刚保存触发的回声
+      syncLoad(function(){ renderAll(); });
+    })
+    .subscribe();
+}
+function enterFamily(code){
+  setFamilyCode(code);
+  closeModal('modalFamily');
+  syncLoad(function(){ renderAll(); subscribeRealtime(); });
+}
+function openFamilyModal(){
+  var hint = document.getElementById('familyCodeHint');
+  var input = document.getElementById('familyCodeInput');
+  if(hint) hint.textContent = '';
+  if(input) input.value = '';
+  openModal('modalFamily');
+  setTimeout(function(){ if(input) input.focus(); }, 60);
+  document.getElementById('familyEnterBtn').onclick = function(){
+    var v = (input.value || '').trim().toLowerCase();
+    if(!v){ if(hint) hint.textContent = '请输入家庭码'; return; }
+    enterFamily(v);
+  };
+  document.getElementById('familyCreateBtn').onclick = function(){
+    enterFamily(genFamilyCode());
+  };
+}
 var COLORS = ['#FF8FA3','#7FB77E','#FFC93C','#8AB6D6','#C9A0DC','#F49AC2'];
 var DECO_EMOJI = ['🥕','🍅','🥬','🍞','🧁','🍪','🥄','🫖','🌿','🍳','🥑','🍓'];
 
@@ -517,6 +623,11 @@ function loadState(){
   }catch(e){
     state = defaultState();
   }
+  normalizeState();
+}
+
+function normalizeState(){
+  if(!state) state = defaultState();
   if(!state.users || !state.users.length){ state.users = defaultState().users; }
   if(!state.currentUserId){ state.currentUserId = state.users[0].id; }
   if(!state.fridge) state.fridge = {chilled:[],frozen:[]};
@@ -534,6 +645,7 @@ function saveState(){
     alert('保存失败：本机存储空间可能已满（照片较占空间），请删除一些旧照片记录后重试。');
     return;
   }
+  syncSave();
   if(bc && !suppressBroadcast){
     try{ bc.postMessage({type:'update', ts:Date.now()}); }catch(e){}
   }
@@ -1197,6 +1309,7 @@ document.getElementById('mgmtBtn').addEventListener('click', function(){
   renderMgmtView(document.getElementById('content'));
 });
 document.getElementById('aboutBtn').addEventListener('click', function(){ openModal('modalAbout'); });
+document.getElementById('switchFamilyBtn').addEventListener('click', function(){ closeModal('modalAbout'); openFamilyModal(); });
 document.getElementById('exportBtn').addEventListener('click', function(){
   var blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
   var a = document.createElement('a');
@@ -1256,6 +1369,13 @@ function init(){
   renderAll();
   renderDeco();
   setupPWA();
+  if(sbClient){
+    if(getFamilyCode()){
+      syncLoad(function(){ renderAll(); subscribeRealtime(); });
+    }else{
+      openFamilyModal();
+    }
+  }
   if('serviceWorker' in navigator){
     window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
   }
