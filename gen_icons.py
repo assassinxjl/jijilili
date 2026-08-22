@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # 生成 PWA 图标：icon-192.png / icon-512.png / icon-512-maskable.png
-# 纯粉底 + 白色「吉吉」字样（使用系统中文字体）。
+# 纯粉底 + 白色文字（自动适配字号，默认 "jili"，可在下方 TEXT 修改）。
 import os
 
 try:
@@ -12,6 +12,7 @@ except ImportError:
 OUT = os.path.dirname(os.path.abspath(__file__))
 BG = (255, 143, 163, 255)        # #FF8FA3
 WHITE = (255, 255, 255, 255)
+TEXT = "jili"                    # 图标文字，可改成任意内容
 FONT_CANDIDATES = [
     "C:/Windows/Fonts/msyh.ttc",        # 微软雅黑
     "C:/Windows/Fonts/msyhbd.ttc",       # 微软雅黑粗体
@@ -32,6 +33,19 @@ def load_font(size):
     return ImageFont.load_default()
 
 
+def fit_font(draw, size, text):
+    max_w = size * 0.82          # 文字最大宽度占图标 82%
+    f = int(size * 0.5)
+    while f > 8:
+        font = load_font(f)
+        bbox = draw.textbbox((0, 0), text, font=font)
+        w = bbox[2] - bbox[0]
+        if w <= max_w:
+            return font
+        f -= 2
+    return load_font(max(f, 8))
+
+
 def make_rounded_square(size, radius):
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
@@ -40,7 +54,7 @@ def make_rounded_square(size, radius):
 
 
 def draw_text(d, size, text):
-    font = load_font(int(size * 0.42))
+    font = fit_font(d, size, text)
     bbox = d.textbbox((0, 0), text, font=font)
     tw = bbox[2] - bbox[0]
     th = bbox[3] - bbox[1]
@@ -52,13 +66,13 @@ def draw_text(d, size, text):
 def main():
     for size in (192, 512):
         img, d = make_rounded_square(size, int(size * 0.22))
-        draw_text(d, size, "吉吉")
+        draw_text(d, size, TEXT)
         img.convert("RGB").save(os.path.join(OUT, f"icon-{size}.png"))
         print(f"生成 icon-{size}.png")
 
     # maskable：满铺底（无圆角），图形居中留出安全区
     img, d = make_rounded_square(512, 0)
-    draw_text(d, 512, "吉吉")
+    draw_text(d, 512, TEXT)
     img.convert("RGB").save(os.path.join(OUT, "icon-512-maskable.png"))
     print("生成 icon-512-maskable.png")
 
