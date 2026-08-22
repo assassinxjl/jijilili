@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="吉吉利利">
+<meta name="theme-color" content="#FF8FA3">
+<title>吉吉利利 · 家庭管理工作台</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-512.png">
+<style>
+  :root{
+    --bg:#FFF7ED;
+    --sidebar-bg:linear-gradient(180deg,#FFE8D6 0%,#FFD9BE 100%);
+    --accent:#FF8FA3;
+    --accent-dark:#FF6B85;
+    --green:#7FB77E;
+    --green-dark:#5E9C63;
+    --yellow:#FFC93C;
+    --text:#4A3728;
+    --text-light:#9C8879;
+    --card:#FFFFFF;
+    --danger:#FF6B6B;
+    --border:#F0DFCB;
+    --radius:16px;
+    --shadow:0 4px 18px rgba(74,55,40,0.09);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family:"Microsoft YaHei","微软雅黑","PingFang SC","Helvetica Neue",Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    -webkit-font-smoothing:antialiased;
+    overscroll-behavior:none;
+  }
+  ::selection{background:var(--accent);color:#fff;}
+  button{font-family:inherit;}
+  input,textarea,select{font-family:inherit;}
+  .app{
+    display:flex;
+    height:100vh;
+    height:100dvh;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    overflow:hidden;
+    position:relative;
+  }
+
+  /* ===================== 侧边栏 ===================== */
+  .sidebar{
+    background:var(--sidebar-bg);
+    display:flex;
+    flex-direction:column;
+    width:max-content;
+    min-width:190px;
+    max-width:260px;
+    padding:18px 10px;
+    flex-shrink:0;
+    transition:min-width .22s ease, max-width .22s ease, padding .22s ease;
+    overflow-y:auto;
+    overflow-x:hidden;
+    position:relative;
+    z-index:5;
+  }
+  .sidebar.collapsed{
+    min-width:64px;
+    max-width:64px;
+    padding:18px 8px;
+    align-items:center;
+  }
+  .sidebar-header{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:2px 8px 16px 8px;
+    white-space:nowrap;
+  }
+  .sidebar.collapsed .sidebar-header{padding:2px 0 16px 0;justify-content:center;}
+  .sidebar-logo{
+    font-size:26px;
+    flex-shrink:0;
+    filter:drop-shadow(0 2px 2px rgba(0,0,0,.08));
+  }
+  .sidebar-title{
+    font-size:19px;
+    font-weight:700;
+    letter-spacing:1px;
+    white-space:nowrap;
+    color:var(--accent-dark);
+  }
+  .sidebar.collapsed .sidebar-title,
+  .sidebar.collapsed .label-text{display:none;}
+
+  .collapse-btn{
+    margin-left:auto;
+    width:26px;height:26px;
+    border:none;
+    background:rgba(255,255,255,.55);
+    border-radius:8px;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;
+    color:var(--text);
+    flex-shrink:0;
+  }
+  .sidebar.collapsed .collapse-btn{margin-left:0;}
+  .collapse-btn:active{transform:scale(.92);}
+
+  .nav-tree{flex:1;overflow-y:auto;overflow-x:hidden;}
+  .nav-group{margin-bottom:6px;}
+  .nav-l1{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:9px 10px;
+    border-radius:12px;
+    font-size:14px;
+    font-weight:600;
+    color:var(--text);
+    white-space:nowrap;
+    cursor:default;
+    user-select:none;
+  }
+  .nav-l1-icon{font-size:16px;flex-shrink:0;width:20px;text-align:center;}
+  .sidebar.collapsed .nav-l1{justify-content:center;padding:9px 4px;}
+  .nav-l2-list{margin:2px 0 8px 0;display:flex;flex-direction:column;gap:2px;}
+  .nav-l2{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:8px 10px 8px 30px;
+    border-radius:11px;
+    font-size:15px;
+    font-weight:500;
+    color:var(--text);
+    cursor:pointer;
+    white-space:nowrap;
+    border:none;
+    background:transparent;
+    text-align:left;
+    width:100%;
+  }
+  .sidebar.collapsed .nav-l2{padding:8px 4px;justify-content:center;}
+  .nav-l2:hover{background:rgba(255,255,255,.55);}
+  .nav-l2.active{background:#fff;color:var(--accent-dark);box-shadow:var(--shadow);}
+  .nav-l2-icon{font-size:15px;flex-shrink:0;width:18px;text-align:center;}
+
+  .sidebar-footer{
+    margin-top:auto;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    padding-top:10px;
+  }
+  .sidebar-footer-btn{
+    display:flex;align-items:center;gap:8px;
+    padding:9px 10px;border-radius:12px;border:none;
+    background:rgba(255,255,255,.5);
+    font-size:14px;font-weight:600;color:var(--text);
+    cursor:pointer;white-space:nowrap;width:100%;text-align:left;
+  }
+  .sidebar.collapsed .sidebar-footer-btn{justify-content:center;padding:9px 4px;}
+  .sidebar-footer-btn:hover{background:#fff;}
+
+  /* ===================== 主内容区 ===================== */
+  .main{
+    flex:1;
+    overflow-y:auto;
+    position:relative;
+    padding:22px 28px 60px 28px;
+    min-width:0;
+  }
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:18px;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .crumb{
+    font-size:13px;
+    color:var(--text-light);
+    font-weight:600;
+  }
+  .crumb .l2name{font-size:22px;color:var(--text);font-weight:700;margin-left:2px;}
+  .user-box{
+    display:flex;align-items:center;gap:8px;
+    background:#fff;border-radius:999px;padding:5px 6px 5px 12px;
+    box-shadow:var(--shadow);
+  }
+  .user-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+  .user-select{border:none;background:transparent;font-size:13px;color:var(--text);font-weight:600;outline:none;max-width:110px;}
+  .user-add-btn{
+    width:26px;height:26px;border-radius:50%;border:none;background:var(--accent);color:#fff;
+    cursor:pointer;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;
+  }
+
+  .card{
+    background:var(--card);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:18px 20px;
+  }
+  .section-title{
+    font-size:16px;font-weight:700;margin:0 0 12px 0;
+    display:flex;align-items:center;gap:8px;
+  }
+  .btn{
+    border:none;border-radius:10px;padding:8px 16px;font-size:13.5px;font-weight:700;
+    cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
+  }
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary:active{background:var(--accent-dark);}
+  .btn-green{background:var(--green);color:#fff;}
+  .btn-green:active{background:var(--green-dark);}
+  .btn-soft{background:#FFF1E4;color:var(--text);}
+  .btn-soft:active{background:#FFE4CC;}
+  .btn-danger{background:var(--danger);color:#fff;}
+  .btn-ghost{background:transparent;color:var(--text-light);border:1px solid var(--border);}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+
+  /* ===================== 装饰元素 ===================== */
+  .deco{position:fixed;pointer-events:none;opacity:.16;z-index:0;filter:grayscale(.05);animation:floaty 6s ease-in-out infinite;}
+  @keyframes floaty{0%,100%{transform:translateY(0px) rotate(0deg);}50%{transform:translateY(-10px) rotate(6deg);}}
+  @media (prefers-reduced-motion: reduce){.deco{animation:none;}}
+
+  /* ===================== 冰箱模块 ===================== */
+  .fridge-section{margin-bottom:22px;}
+  .fridge-section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .fridge-section-head h3{margin:0;font-size:15px;display:flex;align-items:center;gap:6px;}
+  .fridge-head-actions{display:flex;gap:8px;}
+  .fridge-list{display:flex;flex-direction:column;gap:10px;}
+  .fridge-item-wrap{position:relative;border-radius:12px;overflow:hidden;}
+  .fridge-item-delete{
+    position:absolute;top:0;right:0;bottom:0;width:72px;
+    background:var(--danger);color:#fff;border:none;
+    display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;
+  }
+  .fridge-item-content{
+    position:relative;background:#FFFDFA;border:1px solid var(--border);
+    padding:12px 14px;border-radius:12px;
+    transform:translateX(0);
+    touch-action:pan-y;cursor:pointer;
+  }
+  .fridge-item-content.dragging{transition:none;}
+  .fridge-item-content.snap{transition:transform .2s ease;}
+  .fi-name{font-weight:700;font-size:15px;}
+  .fi-name.expired{color:var(--danger);}
+  .fi-meta{font-size:12.5px;color:var(--text-light);margin-top:3px;}
+  .fi-meta.soon{color:#D98A2B;font-weight:600;}
+  .empty-tip{color:var(--text-light);font-size:13.5px;padding:16px 4px;text-align:center;}
+
+  /* ===================== 食谱模块 ===================== */
+  .recipe-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:18px;}
+  .ai-result{white-space:pre-wrap;font-size:14px;line-height:1.7;margin-top:12px;color:var(--text);min-height:20px;}
+  .cal-wrap{max-width:360px;}
+  .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .cal-head b{font-size:15px;}
+  .cal-nav-btn{border:none;background:#FFF1E4;width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:14px;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;}
+  .cal-wk{font-size:11.5px;color:var(--text-light);padding:4px 0;font-weight:700;}
+  .cal-day{
+    position:relative;padding:7px 0 10px 0;border-radius:10px;font-size:13px;cursor:pointer;
+    background:transparent;border:none;color:var(--text);
+  }
+  .cal-day.other{color:#DCC9B6;}
+  .cal-day.today{outline:2px solid var(--accent);outline-offset:-2px;}
+  .cal-day.selected{background:var(--accent);color:#fff;}
+  .cal-dots{position:absolute;bottom:1px;left:50%;transform:translateX(-50%);display:flex;gap:2px;}
+  .cal-dot{width:5px;height:5px;border-radius:50%;}
+  .dot-home{background:var(--green);}
+  .dot-out{background:var(--danger);}
+  .day-records{margin-top:14px;display:flex;flex-direction:column;gap:8px;}
+  .day-record-item{display:flex;gap:10px;background:#FFFDFA;border:1px solid var(--border);border-radius:12px;padding:10px;}
+  .day-record-item img{width:52px;height:52px;object-fit:cover;border-radius:8px;flex-shrink:0;}
+  .drtag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;color:#fff;display:inline-block;margin-bottom:3px;}
+  .drtag.home{background:var(--green);}
+  .drtag.out{background:var(--danger);}
+  .dr-note{font-size:13px;color:var(--text);}
+  .dr-user{font-size:11px;color:var(--text-light);margin-top:2px;}
+
+  /* ===================== 待办事项 ===================== */
+  .todo-add-row{display:flex;gap:8px;margin-bottom:16px;}
+  .todo-add-row input{flex:1;border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:14px;outline:none;}
+  .todo-add-row input:focus{border-color:var(--accent);}
+  .todo-list{display:flex;flex-direction:column;gap:8px;}
+  .todo-item{
+    display:flex;align-items:center;gap:10px;background:#FFFDFA;border:1px solid var(--border);
+    border-radius:12px;padding:10px 12px;
+  }
+  .todo-check{
+    width:22px;height:22px;border-radius:50%;border:2px solid var(--green);background:transparent;
+    cursor:pointer;flex-shrink:0;
+  }
+  .todo-text{flex:1;font-size:14.5px;border:none;background:transparent;outline:none;color:var(--text);}
+  .todo-user-tag{font-size:11px;padding:2px 8px;border-radius:999px;color:#fff;flex-shrink:0;}
+  .todo-del{border:none;background:transparent;color:var(--text-light);font-size:16px;cursor:pointer;flex-shrink:0;}
+  .todo-del:hover{color:var(--danger);}
+
+  /* ===================== 自定义 / 设置 ===================== */
+  textarea.free-note{width:100%;min-height:320px;border:1px solid var(--border);border-radius:12px;padding:14px;font-size:14px;outline:none;resize:vertical;line-height:1.7;}
+  textarea.free-note:focus{border-color:var(--accent);}
+  .mgmt-group{border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:14px;}
+  .mgmt-l1-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+  .mgmt-l1-row input[type=text]{border:1px solid var(--border);border-radius:8px;padding:6px 9px;font-size:14px;}
+  .mgmt-icon-input{width:44px;text-align:center;}
+  .mgmt-name-input{width:150px;font-weight:700;}
+  .mgmt-l2-row{display:flex;align-items:center;gap:8px;margin:6px 0 6px 22px;}
+  .mgmt-l2-row input[type=text]{border:1px solid var(--border);border-radius:8px;padding:5px 8px;font-size:13.5px;}
+  .switch{position:relative;width:38px;height:22px;flex-shrink:0;}
+  .switch input{opacity:0;width:0;height:0;}
+  .switch-slider{position:absolute;inset:0;background:#E4D6C4;border-radius:999px;cursor:pointer;transition:.2s;}
+  .switch-slider:before{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;}
+  .switch input:checked + .switch-slider{background:var(--green);}
+  .switch input:checked + .switch-slider:before{transform:translateX(16px);}
+  .icon-btn{border:none;background:transparent;font-size:15px;cursor:pointer;color:var(--text-light);}
+  .icon-btn:hover{color:var(--danger);}
+  .add-l2-row{margin-left:22px;}
+  .mini-hint{font-size:12px;color:var(--text-light);margin-top:4px;line-height:1.6;}
+  .field-label{font-size:12.5px;color:var(--text-light);font-weight:700;margin:12px 0 5px 0;}
+  .field-input{width:100%;border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:14px;outline:none;}
+  .field-input:focus{border-color:var(--accent);}
+
+  /* ===================== 弹窗 Modal ===================== */
+  .modal-mask{
+    position:fixed;inset:0;background:rgba(74,55,40,.35);
+    display:none;align-items:center;justify-content:center;z-index:100;padding:16px;
+  }
+  .modal-mask.show{display:flex;}
+  .modal-box{
+    background:#fff;border-radius:20px;padding:22px 22px 18px 22px;
+    width:100%;max-width:400px;max-height:88vh;overflow-y:auto;
+    box-shadow:0 12px 40px rgba(0,0,0,.18);
+  }
+  .modal-title{font-size:17px;font-weight:800;margin:0 0 14px 0;display:flex;align-items:center;gap:6px;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;}
+  .seg{display:flex;background:#FFF1E4;border-radius:10px;padding:3px;gap:3px;}
+  .seg button{flex:1;border:none;background:transparent;padding:8px 0;border-radius:8px;font-size:13.5px;font-weight:700;color:var(--text-light);cursor:pointer;}
+  .seg button.active{background:#fff;color:var(--accent-dark);box-shadow:var(--shadow);}
+  .photo-preview{width:100%;max-height:160px;object-fit:cover;border-radius:12px;margin-top:8px;display:none;}
+
+  /* ===================== 响应式 / 移动端 ===================== */
+  @media (max-width:820px){
+    .sidebar{position:fixed;top:0;bottom:0;left:0;min-width:64px;max-width:64px;padding:16px 8px;box-shadow:2px 0 12px rgba(0,0,0,.06);}
+    .sidebar .sidebar-title,.sidebar .label-text{display:none;}
+    .sidebar.collapsed{transform:translateX(-100%);box-shadow:none;}
+    .sidebar:not(.collapsed){min-width:210px;max-width:210px;}
+    .sidebar:not(.collapsed) .sidebar-title,.sidebar:not(.collapsed) .label-text{display:inline;}
+    .main{padding:16px 16px 60px 16px;margin-left:64px;}
+    .app.sb-open .main{opacity:.4;}
+    .recipe-row{flex-direction:column;}
+  }
+  @media (max-width:480px){
+    .modal-box{padding:18px 16px 14px 16px;}
+    .crumb .l2name{font-size:19px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <!-- ===== 侧边栏 ===== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-logo">🍚</span>
+      <span class="sidebar-title">吉吉利利</span>
+      <button class="collapse-btn" id="collapseBtn" title="折叠/展开">◀</button>
+    </div>
+    <nav class="nav-tree" id="navTree"></nav>
+    <div class="sidebar-footer">
+      <button class="sidebar-footer-btn" id="mgmtBtn"><span>⚙️</span><span class="label-text">模块管理</span></button>
+      <button class="sidebar-footer-btn" id="aboutBtn"><span>ℹ️</span><span class="label-text">关于 & 数据</span></button>
+    </div>
+  </aside>
+
+  <!-- ===== 主内容 ===== -->
+  <main class="main" id="main">
+    <div class="topbar">
+      <div class="crumb" id="crumb">吃吃吃吃 <span class="l2name">冰箱食材</span></div>
+      <div class="user-box">
+        <span class="user-dot" id="userDot"></span>
+        <select class="user-select" id="userSelect"></select>
+        <button class="user-add-btn" id="userAddBtn" title="添加家庭成员">＋</button>
+      </div>
+    </div>
+    <div id="content"></div>
+  </main>
+</div>
+
+<!-- ===== 弹窗：冰箱食材 增/改 ===== -->
+<div class="modal-mask" id="modalFridge">
+  <div class="modal-box">
+    <p class="modal-title">🧊 <span id="fridgeModalTitle">添加食材</span></p>
+    <div class="field-label">名称</div>
+    <input class="field-input" id="fridgeName" placeholder="例如：鸡蛋">
+    <div class="field-label">保质期至</div>
+    <input class="field-input" id="fridgeExpiry" type="date">
+    <div class="field-label">分量 / 备注</div>
+    <input class="field-input" id="fridgeQty" placeholder="例如：6 个">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modalFridge')">取消</button>
+      <button class="btn btn-primary" id="fridgeSaveBtn">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 弹窗：饮食记录 ===== -->
+<div class="modal-mask" id="modalRecord">
+  <div class="modal-box">
+    <p class="modal-title">🍽️ 记录一餐</p>
+    <div class="field-label">日期</div>
+    <input class="field-input" id="recDate" type="date">
+    <div class="field-label">类型</div>
+    <div class="seg" id="recTypeSeg">
+      <button data-v="在家" class="active">🏠 在家</button>
+      <button data-v="外食">🍜 外食</button>
+    </div>
+    <div class="field-label">备注</div>
+    <input class="field-input" id="recNote" placeholder="吃了什么呀～">
+    <div class="field-label">照片（可选）</div>
+    <input class="field-input" id="recPhoto" type="file" accept="image/*">
+    <img class="photo-preview" id="recPhotoPreview">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modalRecord')">取消</button>
+      <button class="btn btn-primary" id="recSaveBtn">保存记录</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 弹窗：AI 设置 ===== -->
+<div class="modal-mask" id="modalApi">
+  <div class="modal-box">
+    <p class="modal-title">🤖 智能推荐 · API 设置</p>
+    <div class="mini-hint">支持任意 OpenAI 兼容接口（如 OpenAI / DeepSeek / Moonshot 等），密钥仅保存在本机浏览器 localStorage 中，不会上传任何服务器。</div>
+    <div class="field-label">接口地址 Endpoint</div>
+    <input class="field-input" id="apiEndpoint" placeholder="https://api.openai.com/v1/chat/completions">
+    <div class="field-label">API Key</div>
+    <input class="field-input" id="apiKey" placeholder="sk-xxxxxxxx" type="password">
+    <div class="field-label">模型名称 Model</div>
+    <input class="field-input" id="apiModel" placeholder="gpt-3.5-turbo">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modalApi')">取消</button>
+      <button class="btn btn-primary" id="apiSaveBtn">保存设置</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 弹窗：关于 ===== -->
+<div class="modal-mask" id="modalAbout">
+  <div class="modal-box">
+    <p class="modal-title">ℹ️ 关于「吉吉利利」</p>
+    <div class="mini-hint" style="font-size:13px;line-height:1.9;">
+      · 所有数据保存在本机浏览器的 localStorage 中，不会上传到任何服务器。<br>
+      · 同一浏览器打开的多个标签页会自动实时同步数据（收纳、待办等）。<br>
+      · 由于本应用不含后端服务器，<b>无法在不同设备/不同浏览器之间自动同步数据</b>；如需换设备使用，请用下方「导出数据」「导入数据」手动搬家。<br>
+      · 手机上可通过浏览器菜单「添加到主屏幕」把它变成一个图标，效果因手机浏览器而略有差异。<br>
+      · 电脑上可把该 html 文件拖到桌面，双击即可用浏览器打开；也可为浏览器创建桌面快捷方式指向该文件。
+    </div>
+    <div class="modal-actions" style="justify-content:space-between;">
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-soft" id="exportBtn">导出数据</button>
+        <button class="btn btn-soft" id="importBtn">导入数据</button>
+        <input type="file" id="importFile" accept="application/json" style="display:none;">
+      </div>
+      <button class="btn btn-primary" onclick="closeModal('modalAbout')">好的</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* =========================================================
+   数据层：state 结构 + 读写 + 多标签页同步
+   ========================================================= */
+var STORAGE_KEY = 'jjll_state_v1';
+var COLORS = ['#FF8FA3','#7FB77E','#FFC93C','#8AB6D6','#C9A0DC','#F49AC2'];
+var DECO_EMOJI = ['🥕','🍅','🥬','🍞','🧁','🍪','🥄','🫖','🌿','🍳','🥑','🍓'];
+
+function defaultState(){
+  return {
+    users: [{id:'u_'+Date.now(), name:'家人', color: COLORS[0]}],
+    currentUserId: null,
+    modules: [
+      {id:'m_chi', name:'吃吃吃吃', icon:'🍳', enabled:true, order:0, children:[
+        {id:'m_fridge', name:'冰箱食材', icon:'🧊', enabled:true, order:0, type:'fridge'},
+        {id:'m_recipe', name:'每日食谱', icon:'📅', enabled:true, order:1, type:'recipe'}
+      ]},
+      {id:'m_zhu', name:'住住住住', icon:'🏠', enabled:true, order:1, children:[
+        {id:'m_todo', name:'待办事项', icon:'✅', enabled:true, order:0, type:'todo'}
+      ]}
+    ],
+    fridge:{ chilled:[], frozen:[] },
+    recipeRecords:[],
+    apiConfig:{endpoint:'', key:'', model:'gpt-3.5-turbo'},
+    todos:[],
+    customNotes:{}
+  };
+}
+
+var state = null;
+
+function loadState(){
+  try{
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      state = JSON.parse(raw);
+    }else{
+      state = defaultState();
+    }
+  }catch(e){
+    state = defaultState();
+  }
+  if(!state.users || !state.users.length){ state.users = defaultState().users; }
+  if(!state.currentUserId){ state.currentUserId = state.users[0].id; }
+  if(!state.fridge) state.fridge = {chilled:[],frozen:[]};
+  if(!state.recipeRecords) state.recipeRecords = [];
+  if(!state.apiConfig) state.apiConfig = {endpoint:'',key:'',model:'gpt-3.5-turbo'};
+  if(!state.todos) state.todos = [];
+  if(!state.customNotes) state.customNotes = {};
+}
+
+var suppressBroadcast = false;
+function saveState(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }catch(e){
+    alert('保存失败：本机存储空间可能已满（照片较占空间），请删除一些旧照片记录后重试。');
+    return;
+  }
+  if(bc && !suppressBroadcast){
+    try{ bc.postMessage({type:'update', ts:Date.now()}); }catch(e){}
+  }
+}
+
+var bc = null;
+try{ bc = new BroadcastChannel('jjll-sync'); }catch(e){ bc = null; }
+if(bc){
+  bc.onmessage = function(e){
+    if(e.data && e.data.type==='update'){
+      loadState();
+      renderAll();
+    }
+  };
+}
+window.addEventListener('storage', function(e){
+  if(e.key === STORAGE_KEY){
+    loadState();
+    renderAll();
+  }
+});
+
+/* =========================================================
+   工具函数
+   ========================================================= */
+function uid(prefix){ return (prefix||'id')+'_'+Date.now()+'_'+Math.floor(Math.random()*10000); }
+function todayStr(){
+  var d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function esc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function findUser(id){
+  var u = state.users.find(function(x){return x.id===id;});
+  return u || state.users[0];
+}
+function openModal(id){ document.getElementById(id).classList.add('show'); }
+window.closeModal = function(id){ document.getElementById(id).classList.remove('show'); };
+
+function getL1(id){ return state.modules.find(function(m){return m.id===id;}); }
+function getL2(l1id, l2id){
+  var l1 = getL1(l1id);
+  if(!l1) return null;
+  return l1.children.find(function(c){return c.id===l2id;});
+}
+
+/* =========================================================
+   当前视图
+   ========================================================= */
+var view = { l1:null, l2:null };
+
+function pickInitialView(){
+  for(var i=0;i<state.modules.length;i++){
+    var g = state.modules[i];
+    if(!g.enabled) continue;
+    for(var j=0;j<g.children.length;j++){
+      if(g.children[j].enabled){ view.l1=g.id; view.l2=g.children[j].id; return; }
+    }
+  }
+  view.l1 = null; view.l2 = null;
+}
+
+/* =========================================================
+   渲染：侧边栏
+   ========================================================= */
+function renderSidebar(){
+  var html = '';
+  state.modules.slice().sort(function(a,b){return a.order-b.order;}).forEach(function(g){
+    if(!g.enabled) return;
+    var kids = g.children.slice().sort(function(a,b){return a.order-b.order;}).filter(function(c){return c.enabled;});
+    if(!kids.length) return;
+    html += '<div class="nav-group">';
+    html += '<div class="nav-l1"><span class="nav-l1-icon">'+esc(g.icon||'📁')+'</span><span class="label-text">'+esc(g.name)+'</span></div>';
+    html += '<div class="nav-l2-list">';
+    kids.forEach(function(c){
+      var active = (view.l1===g.id && view.l2===c.id);
+      html += '<button class="nav-l2'+(active?' active':'')+'" data-l1="'+g.id+'" data-l2="'+c.id+'">'+
+              '<span class="nav-l2-icon">'+esc(c.icon||'•')+'</span><span class="label-text">'+esc(c.name)+'</span></button>';
+    });
+    html += '</div></div>';
+  });
+  document.getElementById('navTree').innerHTML = html || '<div class="mini-hint" style="padding:10px;">还没有启用的模块，去「模块管理」添加吧～</div>';
+  Array.prototype.forEach.call(document.querySelectorAll('.nav-l2'), function(btn){
+    btn.addEventListener('click', function(){
+      view.l1 = btn.getAttribute('data-l1');
+      view.l2 = btn.getAttribute('data-l2');
+      renderSidebar();
+      renderContent();
+      if(window.innerWidth<=820){ document.getElementById('sidebar').classList.add('collapsed'); }
+    });
+  });
+}
+
+/* =========================================================
+   渲染：用户选择区
+   ========================================================= */
+function renderUserBox(){
+  var sel = document.getElementById('userSelect');
+  sel.innerHTML = state.users.map(function(u){
+    return '<option value="'+u.id+'"'+(u.id===state.currentUserId?' selected':'')+'>'+esc(u.name)+'</option>';
+  }).join('');
+  document.getElementById('userDot').style.background = findUser(state.currentUserId).color;
+  sel.onchange = function(){
+    state.currentUserId = sel.value;
+    saveState();
+    renderUserBox();
+  };
+  document.getElementById('userAddBtn').onclick = function(){
+    var name = prompt('新家庭成员的名字：');
+    if(!name) return;
+    var color = COLORS[state.users.length % COLORS.length];
+    var u = {id:uid('u'), name:name.trim(), color:color};
+    state.users.push(u);
+    state.currentUserId = u.id;
+    saveState();
+    renderUserBox();
+  };
+}
+
+/* =========================================================
+   渲染：内容区总调度
+   ========================================================= */
+function renderContent(){
+  var box = document.getElementById('content');
+  var crumbEl = document.getElementById('crumb');
+  if(!view.l1 || !view.l2){
+    crumbEl.innerHTML = '';
+    box.innerHTML = '<div class="card empty-tip">👈 请选择一个模块，或前往「模块管理」开启功能</div>';
+    return;
+  }
+  var l1 = getL1(view.l1), l2 = getL2(view.l1, view.l2);
+  if(!l1 || !l2){ pickInitialView(); renderSidebar(); renderContent(); return; }
+  crumbEl.innerHTML = esc(l1.icon)+' '+esc(l1.name)+' <span class="l2name">'+esc(l2.icon)+' '+esc(l2.name)+'</span>';
+
+  if(l2.type==='fridge') renderFridgeView(box);
+  else if(l2.type==='recipe') renderRecipeView(box, l2);
+  else if(l2.type==='todo') renderTodoView(box);
+  else renderCustomView(box, l2);
+}
+
+/* =========================================================
+   模块一：冰箱食材
+   ========================================================= */
+function daysLeft(dateStr){
+  if(!dateStr) return null;
+  var t = new Date(dateStr+'T00:00:00').getTime();
+  var now = new Date(); now.setHours(0,0,0,0);
+  return Math.round((t-now.getTime())/86400000);
+}
+
+function renderFridgeView(box){
+  function section(key,label,icon){
+    var items = state.fridge[key].slice().sort(function(a,b){
+      if(!a.expiry) return 1;
+      if(!b.expiry) return -1;
+      return a.expiry.localeCompare(b.expiry);
+    });
+    var rows = items.map(function(it){
+      var dl = daysLeft(it.expiry);
+      var expired = dl!==null && dl<0;
+      var soon = dl!==null && dl>=0 && dl<=2;
+      var metaTxt = (it.expiry? ('保质期至 '+it.expiry+(expired?'（已过期）':soon?'（还剩'+dl+'天）':'')) : '未设置保质期') + (it.qty? ('　·　'+esc(it.qty)) : '');
+      return '<div class="fridge-item-wrap">'+
+        '<button class="fridge-item-delete" data-key="'+key+'" data-id="'+it.id+'">🗑️</button>'+
+        '<div class="fridge-item-content" data-key="'+key+'" data-id="'+it.id+'">'+
+          '<div class="fi-name'+(expired?' expired':'')+'">'+esc(it.name)+'</div>'+
+          '<div class="fi-meta'+(soon?' soon':'')+'">'+metaTxt+'</div>'+
+        '</div></div>';
+    }).join('');
+    return '<div class="fridge-section">'+
+      '<div class="fridge-section-head"><h3>'+icon+' '+label+'（'+items.length+'）</h3>'+
+        '<div class="fridge-head-actions"><button class="btn btn-primary" data-add="'+key+'">＋ 添加食材</button></div>'+
+      '</div>'+
+      '<div class="fridge-list">'+(rows || '<div class="empty-tip">还没有食材，点击右上角添加吧～</div>')+'</div>'+
+    '</div>';
+  }
+  box.innerHTML = '<div class="card">'+
+    section('chilled','冷藏','❄️')+
+    section('frozen','冷冻','🧊')+
+  '</div>';
+
+  Array.prototype.forEach.call(box.querySelectorAll('[data-add]'), function(btn){
+    btn.addEventListener('click', function(){ openFridgeModal(btn.getAttribute('data-add'), null); });
+  });
+  Array.prototype.forEach.call(box.querySelectorAll('.fridge-item-delete'), function(btn){
+    btn.addEventListener('click', function(){
+      var key = btn.getAttribute('data-key'), id = btn.getAttribute('data-id');
+      state.fridge[key] = state.fridge[key].filter(function(x){return x.id!==id;});
+      saveState(); renderContent();
+    });
+  });
+  bindFridgeSwipe(box);
+}
+
+function bindFridgeSwipe(box){
+  Array.prototype.forEach.call(box.querySelectorAll('.fridge-item-content'), function(el){
+    var startX=0, curX=0, dragging=false, moved=false;
+    el.addEventListener('pointerdown', function(e){
+      startX = e.clientX; curX=0; dragging=true; moved=false;
+      el.classList.add('dragging'); el.classList.remove('snap');
+      el.setPointerCapture && el.setPointerCapture(e.pointerId);
+    });
+    el.addEventListener('pointermove', function(e){
+      if(!dragging) return;
+      var dx = e.clientX - startX;
+      if(Math.abs(dx)>4) moved=true;
+      curX = Math.max(-72, Math.min(0, dx));
+      el.style.transform = 'translateX('+curX+'px)';
+    });
+    function endDrag(){
+      if(!dragging) return;
+      dragging=false;
+      el.classList.remove('dragging'); el.classList.add('snap');
+      if(curX < -36){ el.style.transform='translateX(-72px)'; }
+      else{ el.style.transform='translateX(0px)'; }
+      if(!moved){
+        el.style.transform='translateX(0px)';
+        openFridgeModal(el.getAttribute('data-key'), el.getAttribute('data-id'));
+      }
+    }
+    el.addEventListener('pointerup', endDrag);
+    el.addEventListener('pointercancel', endDrag);
+  });
+}
+
+var fridgeCtx = {key:null,id:null};
+function openFridgeModal(key,id){
+  fridgeCtx = {key:key,id:id};
+  var title = document.getElementById('fridgeModalTitle');
+  var nameEl=document.getElementById('fridgeName'), expEl=document.getElementById('fridgeExpiry'), qtyEl=document.getElementById('fridgeQty');
+  if(id){
+    var item = state.fridge[key].find(function(x){return x.id===id;});
+    title.textContent = '编辑食材';
+    nameEl.value = item.name; expEl.value = item.expiry||''; qtyEl.value = item.qty||'';
+  }else{
+    title.textContent = '添加食材';
+    nameEl.value=''; expEl.value=''; qtyEl.value='';
+  }
+  openModal('modalFridge');
+  setTimeout(function(){nameEl.focus();},50);
+}
+document.getElementById('fridgeSaveBtn').addEventListener('click', function(){
+  var name = document.getElementById('fridgeName').value.trim();
+  if(!name){ alert('请填写食材名称'); return; }
+  var expiry = document.getElementById('fridgeExpiry').value;
+  var qty = document.getElementById('fridgeQty').value.trim();
+  if(fridgeCtx.id){
+    var item = state.fridge[fridgeCtx.key].find(function(x){return x.id===fridgeCtx.id;});
+    item.name=name; item.expiry=expiry; item.qty=qty;
+  }else{
+    state.fridge[fridgeCtx.key].push({id:uid('f'), name:name, expiry:expiry, qty:qty});
+  }
+  saveState(); closeModal('modalFridge'); renderContent();
+});
+
+/* =========================================================
+   模块二：每日食谱
+   ========================================================= */
+var calState = { year:new Date().getFullYear(), month:new Date().getMonth(), selected: todayStr() };
+
+function renderRecipeView(box){
+  box.innerHTML =
+    '<div class="recipe-row">'+
+      '<div class="card" style="flex:1;min-width:260px;">'+
+        '<p class="section-title">🤖 今日智能推荐</p>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
+          '<button class="btn btn-primary" id="aiRecommendBtn">✨ 根据冰箱食材推荐</button>'+
+          '<button class="btn btn-soft" id="aiSettingsBtn">⚙️ API 设置</button>'+
+        '</div>'+
+        '<div class="ai-result" id="aiResult"></div>'+
+      '</div>'+
+      '<div class="card" style="flex:1;min-width:260px;">'+
+        '<p class="section-title">📝 记录今天吃了什么</p>'+
+        '<button class="btn btn-green" id="openRecordBtn">＋ 记录一餐</button>'+
+        '<div class="mini-hint">在家吃 = 绿色标记，外食 = 红色标记，可在下方日历中查看。</div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="card cal-wrap">'+
+      '<div class="cal-head"><button class="cal-nav-btn" id="calPrev">‹</button><b id="calLabel"></b><button class="cal-nav-btn" id="calNext">›</button></div>'+
+      '<div class="cal-grid" id="calGrid"></div>'+
+      '<div class="day-records" id="dayRecords"></div>'+
+    '</div>';
+
+  document.getElementById('aiRecommendBtn').onclick = callAIRecommend;
+  document.getElementById('aiSettingsBtn').onclick = openApiModal;
+  document.getElementById('openRecordBtn').onclick = function(){ openRecordModal(calState.selected); };
+  document.getElementById('calPrev').onclick = function(){ shiftMonth(-1); };
+  document.getElementById('calNext').onclick = function(){ shiftMonth(1); };
+  renderCalendar();
+  renderDayRecords();
+}
+
+function shiftMonth(delta){
+  calState.month += delta;
+  if(calState.month<0){ calState.month=11; calState.year--; }
+  if(calState.month>11){ calState.month=0; calState.year++; }
+  renderCalendar();
+}
+
+function renderCalendar(){
+  var y=calState.year, m=calState.month;
+  document.getElementById('calLabel').textContent = y+'年 '+(m+1)+'月';
+  var first = new Date(y,m,1);
+  var startDow = first.getDay();
+  var daysInMonth = new Date(y,m+1,0).getDate();
+  var daysInPrev = new Date(y,m,0).getDate();
+  var cells = [];
+  for(var i=startDow-1;i>=0;i--){ cells.push({d:daysInPrev-i, other:true, ym:prevYM(y,m)}); }
+  for(var d=1; d<=daysInMonth; d++){ cells.push({d:d, other:false, ym:{y:y,m:m}}); }
+  while(cells.length % 7 !== 0){ var nd=cells.length-(startDow+daysInMonth); cells.push({d:nd+ (cells.length-startDow-daysInMonth), other:true, ym:nextYM(y,m)}); }
+  // recompute trailing properly
+  var wk = ['日','一','二','三','四','五','六'];
+  var html = wk.map(function(w){return '<div class="cal-wk">'+w+'</div>';}).join('');
+  var todaySt = todayStr();
+  cells.forEach(function(c){
+    var yy = c.other ? c.ym.y : y, mm = c.other ? c.ym.m : m;
+    var ds = yy+'-'+String(mm+1).padStart(2,'0')+'-'+String(c.d).padStart(2,'0');
+    var recs = state.recipeRecords.filter(function(r){return r.date===ds;});
+    var hasHome = recs.some(function(r){return r.type==='在家';});
+    var hasOut = recs.some(function(r){return r.type==='外食';});
+    var cls = 'cal-day'+(c.other?' other':'')+(ds===todaySt?' today':'')+(ds===calState.selected?' selected':'');
+    html += '<button class="'+cls+'" data-ds="'+ds+'">'+c.d+
+      '<span class="cal-dots">'+(hasHome?'<span class="cal-dot dot-home"></span>':'')+(hasOut?'<span class="cal-dot dot-out"></span>':'')+'</span>'+
+      '</button>';
+  });
+  document.getElementById('calGrid').innerHTML = html;
+  Array.prototype.forEach.call(document.querySelectorAll('.cal-day'), function(btn){
+    btn.addEventListener('click', function(){
+      calState.selected = btn.getAttribute('data-ds');
+      renderCalendar();
+      renderDayRecords();
+    });
+  });
+}
+function prevYM(y,m){ return m===0? {y:y-1,m:11} : {y:y,m:m-1}; }
+function nextYM(y,m){ return m===11? {y:y+1,m:0} : {y:y,m:m+1}; }
+
+function renderDayRecords(){
+  var recs = state.recipeRecords.filter(function(r){return r.date===calState.selected;});
+  var box = document.getElementById('dayRecords');
+  if(!recs.length){ box.innerHTML = '<div class="empty-tip">'+calState.selected+' 还没有记录</div>'; return; }
+  box.innerHTML = recs.map(function(r){
+    var u = findUser(r.userId);
+    return '<div class="day-record-item">'+
+      (r.photo? '<img src="'+r.photo+'">' : '')+
+      '<div><span class="drtag '+(r.type==='在家'?'home':'out')+'">'+(r.type==='在家'?'🏠 在家':'🍜 外食')+'</span>'+
+      '<div class="dr-note">'+(esc(r.note)||'（无备注）')+'</div>'+
+      '<div class="dr-user">'+esc(u.name)+'</div></div>'+
+      '<button class="icon-btn" style="margin-left:auto;" data-del="'+r.id+'">🗑️</button>'+
+    '</div>';
+  }).join('');
+  Array.prototype.forEach.call(box.querySelectorAll('[data-del]'), function(btn){
+    btn.addEventListener('click', function(){
+      state.recipeRecords = state.recipeRecords.filter(function(x){return x.id!==btn.getAttribute('data-del');});
+      saveState(); renderCalendar(); renderDayRecords();
+    });
+  });
+}
+
+function openRecordModal(dateStr){
+  document.getElementById('recDate').value = dateStr || todayStr();
+  document.getElementById('recNote').value = '';
+  document.getElementById('recPhoto').value = '';
+  var pv = document.getElementById('recPhotoPreview'); pv.style.display='none'; pv.src='';
+  var seg = document.getElementById('recTypeSeg');
+  Array.prototype.forEach.call(seg.querySelectorAll('button'), function(b,i){ b.classList.toggle('active', i===0); });
+  recordPhotoData = null;
+  openModal('modalRecord');
+}
+document.getElementById('recTypeSeg').addEventListener('click', function(e){
+  if(e.target.tagName!=='BUTTON') return;
+  Array.prototype.forEach.call(this.querySelectorAll('button'), function(b){ b.classList.remove('active'); });
+  e.target.classList.add('active');
+});
+var recordPhotoData = null;
+document.getElementById('recPhoto').addEventListener('change', function(e){
+  var file = e.target.files[0];
+  if(!file) return;
+  compressImage(file, 480, 0.6).then(function(dataUrl){
+    recordPhotoData = dataUrl;
+    var pv = document.getElementById('recPhotoPreview');
+    pv.src = dataUrl; pv.style.display='block';
+  });
+});
+document.getElementById('recSaveBtn').addEventListener('click', function(){
+  var date = document.getElementById('recDate').value || todayStr();
+  var type = document.getElementById('recTypeSeg').querySelector('.active').getAttribute('data-v');
+  var note = document.getElementById('recNote').value.trim();
+  state.recipeRecords.push({
+    id:uid('r'), date:date, type:type, note:note, photo:recordPhotoData||'',
+    userId: state.currentUserId, ts: Date.now()
+  });
+  saveState(); closeModal('modalRecord');
+  calState.selected = date;
+  var y=parseInt(date.slice(0,4),10), m=parseInt(date.slice(5,7),10)-1;
+  calState.year=y; calState.month=m;
+  renderCalendar(); renderDayRecords();
+});
+
+function compressImage(file, maxW, quality){
+  return new Promise(function(resolve){
+    var reader = new FileReader();
+    reader.onload = function(e){
+      var img = new Image();
+      img.onload = function(){
+        var w=img.width, h=img.height;
+        if(w>maxW){ h = Math.round(h*maxW/w); w = maxW; }
+        var canvas = document.createElement('canvas');
+        canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = function(){ resolve(''); };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function openApiModal(){
+  document.getElementById('apiEndpoint').value = state.apiConfig.endpoint||'';
+  document.getElementById('apiKey').value = state.apiConfig.key||'';
+  document.getElementById('apiModel').value = state.apiConfig.model||'gpt-3.5-turbo';
+  openModal('modalApi');
+}
+document.getElementById('apiSaveBtn').addEventListener('click', function(){
+  state.apiConfig = {
+    endpoint: document.getElementById('apiEndpoint').value.trim(),
+    key: document.getElementById('apiKey').value.trim(),
+    model: document.getElementById('apiModel').value.trim() || 'gpt-3.5-turbo'
+  };
+  saveState(); closeModal('modalApi');
+});
+
+async function callAIRecommend(){
+  var resultEl = document.getElementById('aiResult');
+  var cfg = state.apiConfig;
+  if(!cfg.endpoint || !cfg.key){
+    resultEl.textContent = '请先点击「API 设置」填写接口地址和密钥～';
+    openApiModal();
+    return;
+  }
+  var names = state.fridge.chilled.concat(state.fridge.frozen).map(function(i){return i.name;});
+  var ingredients = names.length? names.join('、') : '（冰箱是空的）';
+  var prompt = '我冰箱里现在有这些食材：'+ingredients+'。请据此推荐1-3道适合今天做的家常菜，说明简单做法要点，用中文回答，语言简洁。';
+  resultEl.textContent = '正在为您智能推荐，请稍候...';
+  try{
+    var resp = await fetch(cfg.endpoint, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.key},
+      body: JSON.stringify({ model: cfg.model||'gpt-3.5-turbo', messages:[{role:'user', content: prompt}] })
+    });
+    var data = await resp.json();
+    var text = '';
+    if(data.choices && data.choices[0] && data.choices[0].message){ text = data.choices[0].message.content; }
+    else if(data.content && data.content[0] && data.content[0].text){ text = data.content[0].text; }
+    else { text = JSON.stringify(data); }
+    resultEl.textContent = text || '（未获得有效回复，请检查接口返回格式）';
+  }catch(err){
+    resultEl.textContent = '推荐失败，请检查 API 设置或网络连接：'+err.message;
+  }
+}
+
+/* =========================================================
+   模块三：待办事项
+   ========================================================= */
+function renderTodoView(box){
+  box.innerHTML = '<div class="card">'+
+    '<p class="section-title">✅ 待办事项</p>'+
+    '<div class="todo-add-row"><input id="todoInput" placeholder="添加一件要做的事，回车即可添加"><button class="btn btn-primary" id="todoAddBtn">添加</button></div>'+
+    '<div class="todo-list" id="todoList"></div>'+
+  '</div>';
+  renderTodoList();
+  function add(){
+    var input = document.getElementById('todoInput');
+    var text = input.value.trim();
+    if(!text) return;
+    state.todos.push({id:uid('t'), text:text, userId: state.currentUserId, ts: Date.now()});
+    saveState(); input.value=''; renderTodoList();
+  }
+  document.getElementById('todoAddBtn').onclick = add;
+  document.getElementById('todoInput').addEventListener('keydown', function(e){ if(e.key==='Enter') add(); });
+}
+function renderTodoList(){
+  var list = document.getElementById('todoList');
+  if(!state.todos.length){ list.innerHTML='<div class="empty-tip">暂无待办事项，添加一个吧～</div>'; return; }
+  var sorted = state.todos.slice().sort(function(a,b){return b.ts-a.ts;});
+  list.innerHTML = sorted.map(function(t){
+    var u = findUser(t.userId);
+    return '<div class="todo-item">'+
+      '<button class="todo-check" title="完成并移除" data-done="'+t.id+'"></button>'+
+      '<input class="todo-text" value="'+esc(t.text)+'" data-edit="'+t.id+'">'+
+      '<span class="todo-user-tag" style="background:'+u.color+'">'+esc(u.name)+'</span>'+
+      '<button class="todo-del" title="删除" data-del="'+t.id+'">🗑️</button>'+
+    '</div>';
+  }).join('');
+  Array.prototype.forEach.call(list.querySelectorAll('[data-done]'), function(btn){
+    btn.addEventListener('click', function(){
+      state.todos = state.todos.filter(function(x){return x.id!==btn.getAttribute('data-done');});
+      saveState(); renderTodoList();
+    });
+  });
+  Array.prototype.forEach.call(list.querySelectorAll('[data-del]'), function(btn){
+    btn.addEventListener('click', function(){
+      state.todos = state.todos.filter(function(x){return x.id!==btn.getAttribute('data-del');});
+      saveState(); renderTodoList();
+    });
+  });
+  Array.prototype.forEach.call(list.querySelectorAll('[data-edit]'), function(inp){
+    inp.addEventListener('change', function(){
+      var t = state.todos.find(function(x){return x.id===inp.getAttribute('data-edit');});
+      if(t){ t.text = inp.value.trim() || t.text; saveState(); }
+    });
+  });
+}
+
+/* =========================================================
+   自定义模块（拓展用）
+   ========================================================= */
+function renderCustomView(box, l2){
+  box.innerHTML = '<div class="card">'+
+    '<p class="section-title">'+esc(l2.icon)+' '+esc(l2.name)+'</p>'+
+    '<textarea class="free-note" id="customNoteArea" placeholder="这是一个自定义模块，随手记点什么吧～">'+esc(state.customNotes[l2.id]||'')+'</textarea>'+
+  '</div>';
+  var area = document.getElementById('customNoteArea');
+  var timer=null;
+  area.addEventListener('input', function(){
+    clearTimeout(timer);
+    timer = setTimeout(function(){
+      state.customNotes[l2.id] = area.value;
+      saveState();
+    }, 400);
+  });
+}
+
+/* =========================================================
+   模块管理
+   ========================================================= */
+function renderMgmtView(box){
+  var html = '<div class="card"><p class="section-title">⚙️ 模块管理</p>'+
+    '<div class="mini-hint">可以开关模块显示、重命名、修改图标（填入一个 emoji），或新增/删除一级与二级模块。二级模块若不是内置类型（冰箱食材/每日食谱/待办事项），将作为「自由记事」使用。</div>';
+  state.modules.slice().sort(function(a,b){return a.order-b.order;}).forEach(function(g){
+    html += '<div class="mgmt-group">';
+    html += '<div class="mgmt-l1-row">'+
+      '<input type="text" class="mgmt-icon-input" data-l1icon="'+g.id+'" value="'+esc(g.icon)+'">'+
+      '<input type="text" class="mgmt-name-input" data-l1name="'+g.id+'" value="'+esc(g.name)+'">'+
+      '<label class="switch"><input type="checkbox" data-l1en="'+g.id+'" '+(g.enabled?'checked':'')+'><span class="switch-slider"></span></label>'+
+      '<span style="flex:1;"></span>'+
+      '<button class="icon-btn" title="删除一级模块" data-l1del="'+g.id+'">🗑️</button>'+
+    '</div>';
+    g.children.slice().sort(function(a,b){return a.order-b.order;}).forEach(function(c){
+      html += '<div class="mgmt-l2-row">'+
+        '<input type="text" class="mgmt-icon-input" data-l2icon="'+g.id+'|'+c.id+'" value="'+esc(c.icon)+'">'+
+        '<input type="text" class="mgmt-name-input" data-l2name="'+g.id+'|'+c.id+'" value="'+esc(c.name)+'" style="width:130px;">'+
+        '<span class="mini-hint" style="margin:0;">'+(c.type==='custom'?'自由记事':c.type)+'</span>'+
+        '<label class="switch"><input type="checkbox" data-l2en="'+g.id+'|'+c.id+'" '+(c.enabled?'checked':'')+'><span class="switch-slider"></span></label>'+
+        '<span style="flex:1;"></span>'+
+        '<button class="icon-btn" title="删除" data-l2del="'+g.id+'|'+c.id+'">🗑️</button>'+
+      '</div>';
+    });
+    html += '<div class="add-l2-row"><button class="btn btn-soft" data-addl2="'+g.id+'">＋ 添加二级模块</button></div>';
+    html += '</div>';
+  });
+  html += '<button class="btn btn-primary" id="addL1Btn">＋ 添加一级模块</button></div>';
+  box.innerHTML = html;
+
+  Array.prototype.forEach.call(box.querySelectorAll('[data-l1icon]'), function(el){
+    el.addEventListener('change', function(){ getL1(el.getAttribute('data-l1icon')).icon = el.value||'📁'; saveState(); renderSidebar(); });
+  });
+  Array.prototype.forEach.call(box.querySelectorAll('[data-l1name]'), function(el){
+    el.addEventListener('change', function(){ getL1(el.getAttribute('data-l1name')).name = el.value||'未命名'; saveState(); renderSidebar(); });
+  });
+  Array.prototype.forEach.call(box.querySelectorAll('[data-l1en]'), function(el){
+    el.addEventListener('change', function(){ getL1(el.getAttribute('data-l1en')).enabled = el.checked; saveState(); renderSidebar(); });
+  });
+  Array.prototype.forEach.call(box.querySelectorAll('[data-l1del]'), function(el){
+    el.addEventListener('click', function(){
+      if(!confirm('确定删除该一级模块及其下所有二级模块吗？（数据也会一并删除）')) return;
+      var id = el.getAttribute('data-l1del');
+      state.modules = state.modules.filter(function(m){return m.id!==id;});
+      saveState(); pickInitialView(); renderSidebar(); renderMgmtView(box);
+    });
+  });
+  Array.prototype.forEach.call(box.querySelectorAll('[data-l2icon]'), function(el){
+    el.addEventListener('change', function(){
+      var p = el.getAttribute('data-l2icon').split('|');
+      getL2(p[0],p[1]).icon = el.value||'•'; saveState(); renderSidebar();
+    });
+  });
+  Array.prototype.forEach.call(box.querySelectorAll('[data-l2name]'), function(el){
+    el.addEventListener('change', function(){
+      var p = el.getAttribute('data-l2name').split('|');
+      getL2(p[0],p[1]).name = el.value||'未命名'; saveState(); renderSidebar();
+    });
+  });
+  Array.prototype.forEach.call(box.querySelectorAll('[data-l2en]'), function(el){
+    el.addEventListener('change', function(){
+      var p = el.getAttribute('data-l2en').split('|');
+      getL2(p[0],p[1]).enabled = el.checked; saveState(); renderSidebar();
+    });
+  });
+  Array.prototype.forEach.call(box.querySelectorAll('[data-l2del]'), function(el){
+    el.addEventListener('click', function(){
+      if(!confirm('确定删除该二级模块吗？（数据也会一并删除）')) return;
+      var p = el.getAttribute('data-l2del').split('|');
+      var l1 = getL1(p[0]);
+      l1.children = l1.children.filter(function(c){return c.id!==p[1];});
+      saveState(); pickInitialView(); renderSidebar(); renderMgmtView(box);
+    });
+  });
+  Array.prototype.forEach.call(box.querySelectorAll('[data-addl2]'), function(el){
+    el.addEventListener('click', function(){
+      var name = prompt('新二级模块名称：'); if(!name) return;
+      var icon = prompt('给它选个图标 emoji（可留空）：','📝') || '📝';
+      var l1 = getL1(el.getAttribute('data-addl2'));
+      l1.children.push({id:uid('l2'), name:name.trim(), icon:icon, enabled:true, order:l1.children.length, type:'custom'});
+      saveState(); renderSidebar(); renderMgmtView(box);
+    });
+  });
+  document.getElementById('addL1Btn').addEventListener('click', function(){
+    var name = prompt('新一级模块名称：'); if(!name) return;
+    var icon = prompt('给它选个图标 emoji（可留空）：','📁') || '📁';
+    state.modules.push({id:uid('l1'), name:name.trim(), icon:icon, enabled:true, order:state.modules.length, children:[]});
+    saveState(); renderSidebar(); renderMgmtView(box);
+  });
+}
+
+/* =========================================================
+   装饰元素
+   ========================================================= */
+function renderDeco(){
+  var wraps = document.querySelectorAll('.deco-holder');
+  Array.prototype.forEach.call(wraps, function(w){ w.remove(); });
+  var count = window.innerWidth < 820 ? 4 : 7;
+  for(var i=0;i<count;i++){
+    var span = document.createElement('span');
+    span.className = 'deco deco-holder';
+    span.textContent = DECO_EMOJI[i % DECO_EMOJI.length];
+    span.style.fontSize = (26+Math.random()*22)+'px';
+    span.style.left = (Math.random()*92)+'vw';
+    span.style.top = (8+Math.random()*82)+'vh';
+    span.style.animationDelay = (Math.random()*4)+'s';
+    span.style.animationDuration = (5+Math.random()*3)+'s';
+    document.body.appendChild(span);
+  }
+}
+
+/* =========================================================
+   顶层：折叠 / 弹窗触发 / 导入导出
+   ========================================================= */
+document.getElementById('collapseBtn').addEventListener('click', function(){
+  document.getElementById('sidebar').classList.toggle('collapsed');
+});
+document.getElementById('mgmtBtn').addEventListener('click', function(){
+  view.l1=null; view.l2=null;
+  document.getElementById('crumb').innerHTML = '⚙️ <span class="l2name">模块管理</span>';
+  renderSidebar();
+  renderMgmtView(document.getElementById('content'));
+});
+document.getElementById('aboutBtn').addEventListener('click', function(){ openModal('modalAbout'); });
+document.getElementById('exportBtn').addEventListener('click', function(){
+  var blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '吉吉利利_数据备份_'+todayStr()+'.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+});
+document.getElementById('importBtn').addEventListener('click', function(){ document.getElementById('importFile').click(); });
+document.getElementById('importFile').addEventListener('change', function(e){
+  var file = e.target.files[0]; if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    try{
+      var obj = JSON.parse(ev.target.result);
+      if(!confirm('导入将覆盖当前所有本地数据，确定继续吗？')) return;
+      state = obj; saveState(); loadState(); pickInitialView(); renderAll();
+      closeModal('modalAbout');
+      alert('导入成功！');
+    }catch(err){ alert('导入失败：文件格式不正确'); }
+  };
+  reader.readAsText(file);
+});
+
+/* 点击遮罩关闭弹窗 */
+Array.prototype.forEach.call(document.querySelectorAll('.modal-mask'), function(m){
+  m.addEventListener('click', function(e){ if(e.target===m) m.classList.remove('show'); });
+});
+
+/* =========================================================
+   初始化
+   ========================================================= */
+function renderAll(){
+  renderSidebar();
+  renderUserBox();
+  renderContent();
+}
+
+function setupPWA(){
+  try{
+    var iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="%23FF8FA3"/><text x="50" y="66" font-size="52" text-anchor="middle">🍚</text></svg>';
+    var iconUrl = 'data:image/svg+xml,'+encodeURIComponent(iconSvg);
+    var manifest = {
+      name:'吉吉利利', short_name:'吉吉利利', start_url:'.', display:'standalone',
+      background_color:'#FFF7ED', theme_color:'#FF8FA3',
+      icons:[{src:iconUrl, sizes:'192x192', type:'image/svg+xml', purpose:'any'},{src:iconUrl, sizes:'512x512', type:'image/svg+xml', purpose:'any'}]
+    };
+    var appleIcon = document.createElement('link');
+    appleIcon.rel = 'apple-touch-icon';
+    appleIcon.href = 'icon-512.png';
+    document.head.appendChild(appleIcon);
+  }catch(e){ /* 忽略，不影响主功能 */ }
+}
+
+function init(){
+  loadState();
+  pickInitialView();
+  renderAll();
+  renderDeco();
+  setupPWA();
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
+  }
+  window.addEventListener('resize', function(){ renderDeco(); });
+}
+init();
+
+})();
+</script>
+</body>
+</html>

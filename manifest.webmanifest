@@ -1,0 +1,33 @@
+{
+  "name": "吉吉利利 · 家庭管理工作台",
+  "short_name": "吉吉利利",
+  "description": "家庭管理小程序：冰箱食材、每日食谱、待办事项、自由记事，数据仅保存在本机。",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFF7ED",
+  "theme_color": "#FF8FA3",
+  "lang": "zh-CN",
+  "categories": ["lifestyle", "productivity"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
