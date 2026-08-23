@@ -552,10 +552,13 @@ function syncSave(){
     var now = Date.now();
     justSynced = now; lastSeenTs = now;
     try{
+      // apiConfig 是设备级配置（密钥/代理地址），不参与云同步
+      var dataToSync = JSON.parse(JSON.stringify(state));
+      delete dataToSync.apiConfig;
       fetch(sbBase(), {
         method:'POST',
         headers: Object.assign({ 'Prefer': 'resolution=merge-duplicates' }, sbHeaders()),
-        body: JSON.stringify({ code: code, data: state, updated_at: new Date(now).toISOString() })
+        body: JSON.stringify({ code: code, data: dataToSync, updated_at: new Date(now).toISOString() })
       }).catch(function(){});
     }catch(e){}
   }, 800);
@@ -568,7 +571,12 @@ function syncLoad(cb){
     .then(function(r){ return r.json(); })
     .then(function(rows){
       if(Array.isArray(rows) && rows.length && rows[0] && rows[0].data){
+        // apiConfig 是设备级配置（密钥/代理地址），不参与云同步，保留本地值
+        var localApiConfig = state.apiConfig;
         state = rows[0].data;
+        if(localApiConfig && localApiConfig.endpoint && localApiConfig.key){
+          state.apiConfig = localApiConfig;
+        }
         normalizeState();
         saveStateLocalOnly();
         var ts = new Date(rows[0].updated_at).getTime();
