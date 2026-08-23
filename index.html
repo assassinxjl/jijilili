@@ -552,8 +552,9 @@ function syncSave(){
     var now = Date.now();
     justSynced = now; lastSeenTs = now;
     try{
-      // apiConfig 是设备级配置（密钥/代理地址），不参与云同步
+      // currentUserId 和 apiConfig 是设备本地偏好，不参与云同步
       var dataToSync = JSON.parse(JSON.stringify(state));
+      delete dataToSync.currentUserId;
       delete dataToSync.apiConfig;
       fetch(sbBase(), {
         method:'POST',
@@ -571,9 +572,15 @@ function syncLoad(cb){
     .then(function(r){ return r.json(); })
     .then(function(rows){
       if(Array.isArray(rows) && rows.length && rows[0] && rows[0].data){
-        // apiConfig 是设备级配置（密钥/代理地址），不参与云同步，保留本地值
+        // currentUserId 和 apiConfig 是设备本地偏好，从云端拉取时保留本地值
+        var localCurrentUserId = state.currentUserId;
         var localApiConfig = state.apiConfig;
         state = rows[0].data;
+        // 恢复本地偏好：当前选中成员
+        if(localCurrentUserId && state.users && state.users.some(function(u){return u.id===localCurrentUserId;})){
+          state.currentUserId = localCurrentUserId;
+        }
+        // 恢复本地偏好：API 配置（密钥/代理地址）
         if(localApiConfig && localApiConfig.endpoint && localApiConfig.key){
           state.apiConfig = localApiConfig;
         }
