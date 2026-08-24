@@ -938,6 +938,10 @@ function daysLeft(dateStr){
   var now = new Date(); now.setHours(0,0,0,0);
   return Math.round((t-now.getTime())/86400000);
 }
+function isExpiredItem(it){
+  var dl = daysLeft(it && it.expiry);
+  return dl!==null && dl<0;   // 未设置保质期的不视为过期
+}
 
 function renderFridgeView(box){
   function section(key,label,icon){
@@ -1024,26 +1028,33 @@ function bindIdeaArea(){
 
 function bindFridgeSwipe(box){
   Array.prototype.forEach.call(box.querySelectorAll('.fridge-item-content'), function(el){
-    var startX=0, curX=0, dragging=false, moved=false;
+    var startX=0, startY=0, curX=0, dragging=false, swiped=false;
     el.addEventListener('pointerdown', function(e){
-      startX = e.clientX; curX=0; dragging=true; moved=false;
+      startX = e.clientX; startY = e.clientY; curX=0; dragging=true; swiped=false;
       el.classList.add('dragging'); el.classList.remove('snap');
       el.setPointerCapture && el.setPointerCapture(e.pointerId);
     });
     el.addEventListener('pointermove', function(e){
       if(!dragging) return;
       var dx = e.clientX - startX;
-      if(Math.abs(dx)>4) moved=true;
+      var dy = e.clientY - startY;
       curX = Math.max(-72, Math.min(0, dx));
+      // 横向位移明显且大于纵向位移 → 判定为「滑动」（用于露出删除按钮）
+      // 阈值取 8px，可容忍单击时的轻微抖动，避免误判为滑动
+      if(Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) swiped = true;
       el.style.transform = 'translateX('+curX+'px)';
     });
     function endDrag(){
       if(!dragging) return;
       dragging=false;
       el.classList.remove('dragging'); el.classList.add('snap');
-      if(curX < -36){ el.style.transform='translateX(-72px)'; }
-      else{ el.style.transform='translateX(0px)'; }
-      if(!moved){
+      if(swiped && curX < -36){
+        el.style.transform='translateX(-72px)';   // 滑过阈值：露出删除按钮
+      } else {
+        el.style.transform='translateX(0px)';
+      }
+      // 不是滑动 → 视为「单击」，打开该食材的编辑页
+      if(!swiped){
         el.style.transform='translateX(0px)';
         openFridgeModal(el.getAttribute('data-key'), el.getAttribute('data-id'));
       }
@@ -1371,10 +1382,17 @@ async function callAIRecommend(){
     openApiModal();
     return;
   }
-  var names = state.fridge.chilled.concat(state.fridge.frozen).map(function(i){return i.name;});
+  var allItems = state.fridge.chilled.concat(state.fridge.frozen);
+  var expiredItems = allItems.filter(isExpiredItem);          // 已过期食材，自动排除
+  var freshItems = allItems.filter(function(i){ return !isExpiredItem(i); });
+  var names = freshItems.map(function(i){return i.name;});
   var ingredients = names.length? names.join('、') : '（冰箱是空的）';
   var ideas = (state.recipeIdeas||'').trim();
   var prompt = '我冰箱里现在有这些食材：'+ingredients+'。请据此推荐1-3道适合今天做的家常菜，说明简单做法要点，用中文回答，语言简洁。';
+  if(expiredItems.length){
+    // 明确告知 AI：这些已过期，不要推荐，也避免被误算成可用食材
+    prompt += '\n（以下已过期食材请不要使用，已自动排除，请勿参考：'+expiredItems.map(function(i){return i.name;}).join('、')+'）';
+  }
   if(ideas){
     prompt += '\n另外这是我记下的「菜谱灵感 / 口味偏好」，请尽量结合参考：\n'+ideas.slice(0,800);
   }
