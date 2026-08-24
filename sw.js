@@ -1,5 +1,5 @@
 // 吉吉利利 离线缓存 Service Worker
-const CACHE = 'jjll-v2';
+const CACHE = 'jjll-v3';
 const ASSETS = [
   './',
   './index.html',

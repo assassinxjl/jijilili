@@ -259,6 +259,13 @@
   .fi-meta{font-size:12.5px;color:var(--text-light);margin-top:3px;}
   .fi-meta.soon{color:#D98A2B;font-weight:600;}
   .empty-tip{color:var(--text-light);font-size:13.5px;padding:16px 4px;text-align:center;}
+  .stack-card{margin-top:16px;}
+  textarea.idea-note{
+    width:100%;min-height:130px;border:1px solid var(--border);border-radius:12px;
+    padding:12px 14px;font-size:14px;outline:none;resize:vertical;line-height:1.7;background:#FFFDFA;
+  }
+  textarea.idea-note:focus{border-color:var(--accent);background:#fff;}
+  .idea-saved{font-size:11.5px;color:var(--green-dark);margin-top:6px;height:14px;}
 
   /* ===================== 食谱模块 ===================== */
   .recipe-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:18px;}
@@ -281,8 +288,14 @@
   .dot-home{background:var(--green);}
   .dot-out{background:var(--danger);}
   .day-records{margin-top:14px;display:flex;flex-direction:column;gap:8px;}
-  .day-record-item{display:flex;gap:10px;background:#FFFDFA;border:1px solid var(--border);border-radius:12px;padding:10px;}
-  .day-record-item img{width:52px;height:52px;object-fit:cover;border-radius:8px;flex-shrink:0;}
+  .day-record-item{display:flex;gap:10px;background:#FFFDFA;border:1px solid var(--border);border-radius:12px;padding:10px;align-items:flex-start;}
+  .dr-thumbs{display:flex;gap:4px;flex-shrink:0;}
+  .dr-thumb{position:relative;width:52px;height:52px;border-radius:8px;overflow:hidden;cursor:zoom-in;border:none;padding:0;background:#F3E7D9;flex-shrink:0;}
+  .dr-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .dr-thumb-more{
+    position:absolute;inset:0;background:rgba(0,0,0,.42);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;
+  }
   .drtag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;color:#fff;display:inline-block;margin-bottom:3px;}
   .drtag.home{background:var(--green);}
   .drtag.out{background:var(--danger);}
@@ -300,8 +313,12 @@
   }
   .todo-check{
     width:22px;height:22px;border-radius:50%;border:2px solid var(--green);background:transparent;
-    cursor:pointer;flex-shrink:0;
+    cursor:pointer;flex-shrink:0;padding:0;color:#fff;font-size:13px;font-weight:900;line-height:1;
+    display:flex;align-items:center;justify-content:center;transition:background .15s ease;
   }
+  .todo-check.checked{background:var(--green);}
+  .todo-item.done{background:#FBF6F0;opacity:.72;}
+  .todo-item.done .todo-text{text-decoration:line-through;text-decoration-thickness:1.5px;color:var(--text-light);}
   .todo-text{flex:1;font-size:14.5px;border:none;background:transparent;outline:none;color:var(--text);}
   .todo-user-tag{font-size:11px;padding:2px 8px;border-radius:999px;color:#fff;flex-shrink:0;}
   .todo-del{border:none;background:transparent;color:var(--text-light);font-size:16px;cursor:pointer;flex-shrink:0;}
@@ -348,6 +365,38 @@
   .seg button{flex:1;border:none;background:transparent;padding:8px 0;border-radius:8px;font-size:13.5px;font-weight:700;color:var(--text-light);cursor:pointer;}
   .seg button.active{background:#fff;color:var(--accent-dark);box-shadow:var(--shadow);}
   .photo-preview{width:100%;max-height:160px;object-fit:cover;border-radius:12px;margin-top:8px;display:none;}
+
+  /* 记录弹窗里的多图缩略图 */
+  .photo-thumbs{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .photo-thumb{position:relative;width:74px;height:74px;border-radius:10px;overflow:hidden;border:1px solid var(--border);}
+  .photo-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .photo-thumb-del{
+    position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;
+    border:none;background:rgba(0,0,0,.55);color:#fff;font-size:12px;line-height:1;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .photo-count-hint{font-size:11.5px;color:var(--text-light);margin-top:6px;}
+
+  /* 大图浏览灯箱 */
+  .lb-mask{
+    position:fixed;inset:0;background:rgba(20,12,8,.9);z-index:200;
+    display:none;align-items:center;justify-content:center;flex-direction:column;padding:14px;
+  }
+  .lb-mask.show{display:flex;}
+  .lb-img{max-width:96vw;max-height:76vh;border-radius:14px;object-fit:contain;box-shadow:0 12px 40px rgba(0,0,0,.5);background:#000;}
+  .lb-bar{display:flex;align-items:center;gap:16px;margin-top:16px;}
+  .lb-btn{
+    width:44px;height:44px;border-radius:50%;border:none;background:rgba(255,255,255,.16);color:#fff;
+    font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  }
+  .lb-btn:disabled{opacity:.28;cursor:default;}
+  .lb-count{color:#fff;font-size:13.5px;font-weight:700;min-width:52px;text-align:center;}
+  .lb-close{
+    position:absolute;top:calc(12px + env(safe-area-inset-top));right:14px;
+    width:38px;height:38px;border-radius:50%;border:none;background:rgba(255,255,255,.18);
+    color:#fff;font-size:17px;cursor:pointer;
+  }
+  .lb-meta{color:rgba(255,255,255,.86);font-size:13px;margin-top:10px;text-align:center;max-width:90vw;line-height:1.6;}
 
   /* 移动端抽屉：汉堡按钮 + 遮罩 */
   .menu-toggle{display:none;align-items:center;justify-content:center;width:40px;height:40px;margin-right:4px;border:none;background:transparent;border-radius:10px;font-size:22px;line-height:1;color:var(--accent-dark);cursor:pointer;flex-shrink:0;}
@@ -437,13 +486,26 @@
     </div>
     <div class="field-label">备注</div>
     <input class="field-input" id="recNote" placeholder="吃了什么呀～">
-    <div class="field-label">照片（可选）</div>
-    <input class="field-input" id="recPhoto" type="file" accept="image/*">
-    <img class="photo-preview" id="recPhotoPreview">
+    <div class="field-label">照片（可选，最多 3 张）</div>
+    <input class="field-input" id="recPhoto" type="file" accept="image/*" multiple>
+    <div class="photo-thumbs" id="recPhotoThumbs"></div>
+    <div class="photo-count-hint" id="recPhotoHint">还可以再添加 3 张</div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modalRecord')">取消</button>
       <button class="btn btn-primary" id="recSaveBtn">保存记录</button>
     </div>
+  </div>
+</div>
+
+<!-- ===== 大图浏览灯箱 ===== -->
+<div class="lb-mask" id="modalLightbox">
+  <button class="lb-close" id="lbClose" aria-label="关闭">✕</button>
+  <img class="lb-img" id="lbImg" alt="记录照片">
+  <div class="lb-meta" id="lbMeta"></div>
+  <div class="lb-bar">
+    <button class="lb-btn" id="lbPrev" aria-label="上一张">‹</button>
+    <span class="lb-count" id="lbCount"></span>
+    <button class="lb-btn" id="lbNext" aria-label="下一张">›</button>
   </div>
 </div>
 
@@ -654,6 +716,7 @@ function defaultState(){
     ],
     fridge:{ chilled:[], frozen:[] },
     recipeRecords:[],
+    recipeIdeas:'',
     apiConfig:{endpoint:'', key:'', model:'gpt-3.5-turbo', proxyUrl:''},
     todos:[],
     customNotes:{}
@@ -682,10 +745,16 @@ function normalizeState(){
   if(!state.currentUserId && state.users.length){ state.currentUserId = state.users[0].id; }
   if(!state.fridge) state.fridge = {chilled:[],frozen:[]};
   if(!state.recipeRecords) state.recipeRecords = [];
+  if(typeof state.recipeIdeas !== 'string') state.recipeIdeas = '';
   if(!state.apiConfig) state.apiConfig = {endpoint:'',key:'',model:'gpt-3.5-turbo',proxyUrl:''};
   else if(!('proxyUrl' in state.apiConfig)) state.apiConfig.proxyUrl = '';
   if(!state.todos) state.todos = [];
   if(!state.customNotes) state.customNotes = {};
+  /* 兼容旧数据：照片统一为 photos 数组；待办补齐 done 字段 */
+  state.recipeRecords.forEach(function(r){
+    if(!Array.isArray(r.photos)){ r.photos = r.photo ? [r.photo] : []; }
+  });
+  state.todos.forEach(function(t){ if(typeof t.done !== 'boolean') t.done = false; });
 }
 
 var suppressBroadcast = false;
@@ -899,7 +968,27 @@ function renderFridgeView(box){
   box.innerHTML = '<div class="card">'+
     section('chilled','冷藏','❄️')+
     section('frozen','冷冻','🧊')+
+  '</div>'+
+  /* ===== 今日智能推荐（原「每日食谱」模块内容，已移到此处） ===== */
+  '<div class="card stack-card">'+
+    '<p class="section-title">🤖 今日智能推荐</p>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
+      '<button class="btn btn-primary" id="aiRecommendBtn">✨ 根据冰箱食材推荐</button>'+
+      '<button class="btn btn-soft" id="aiSettingsBtn">⚙️ API 设置</button>'+
+    '</div>'+
+    '<div class="ai-result" id="aiResult">'+esc(lastAiText)+'</div>'+
+  '</div>'+
+  /* ===== 菜谱灵感（可自由打字，内容会参与智能推荐） ===== */
+  '<div class="card stack-card">'+
+    '<p class="section-title">💡 菜谱灵感</p>'+
+    '<div class="mini-hint" style="margin:-6px 0 8px 0;">随手记下想吃的菜、口味偏好、看到的食谱点子～点「智能推荐」时会一并参考。</div>'+
+    '<textarea class="idea-note" id="recipeIdeaArea" placeholder="例如：这周想吃辣的；周末试试红烧排骨；宝宝要少油少盐…">'+esc(state.recipeIdeas||'')+'</textarea>'+
+    '<div class="idea-saved" id="ideaSaved"></div>'+
   '</div>';
+
+  document.getElementById('aiRecommendBtn').onclick = callAIRecommend;
+  document.getElementById('aiSettingsBtn').onclick = openApiModal;
+  bindIdeaArea();
 
   Array.prototype.forEach.call(box.querySelectorAll('[data-add]'), function(btn){
     btn.addEventListener('click', function(){ openFridgeModal(btn.getAttribute('data-add'), null); });
@@ -912,6 +1001,25 @@ function renderFridgeView(box){
     });
   });
   bindFridgeSwipe(box);
+}
+
+/* 菜谱灵感：输入自动保存（防抖 500ms） */
+function bindIdeaArea(){
+  var area = document.getElementById('recipeIdeaArea');
+  if(!area) return;
+  var tip = document.getElementById('ideaSaved');
+  var timer = null;
+  area.addEventListener('input', function(){
+    clearTimeout(timer);
+    timer = setTimeout(function(){
+      state.recipeIdeas = area.value;
+      saveState();
+      if(tip){
+        tip.textContent = '✓ 已保存';
+        setTimeout(function(){ if(tip) tip.textContent=''; }, 1600);
+      }
+    }, 500);
+  });
 }
 
 function bindFridgeSwipe(box){
@@ -984,17 +1092,9 @@ function renderRecipeView(box){
   box.innerHTML =
     '<div class="recipe-row">'+
       '<div class="card" style="flex:1;min-width:260px;">'+
-        '<p class="section-title">🤖 今日智能推荐</p>'+
-        '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
-          '<button class="btn btn-primary" id="aiRecommendBtn">✨ 根据冰箱食材推荐</button>'+
-          '<button class="btn btn-soft" id="aiSettingsBtn">⚙️ API 设置</button>'+
-        '</div>'+
-        '<div class="ai-result" id="aiResult"></div>'+
-      '</div>'+
-      '<div class="card" style="flex:1;min-width:260px;">'+
         '<p class="section-title">📝 记录今天吃了什么</p>'+
         '<button class="btn btn-green" id="openRecordBtn">＋ 记录一餐</button>'+
-        '<div class="mini-hint">在家吃 = 绿色标记，外食 = 红色标记，可在下方日历中查看。</div>'+
+        '<div class="mini-hint">在家吃 = 绿色标记，外食 = 红色标记，可在下方日历中查看。一次最多可上传 3 张照片，点击记录里的照片可看大图。</div>'+
       '</div>'+
     '</div>'+
     '<div class="card cal-wrap">'+
@@ -1003,8 +1103,6 @@ function renderRecipeView(box){
       '<div class="day-records" id="dayRecords"></div>'+
     '</div>';
 
-  document.getElementById('aiRecommendBtn').onclick = callAIRecommend;
-  document.getElementById('aiSettingsBtn').onclick = openApiModal;
   document.getElementById('openRecordBtn').onclick = function(){ openRecordModal(calState.selected); };
   document.getElementById('calPrev').onclick = function(){ shiftMonth(-1); };
   document.getElementById('calNext').onclick = function(){ shiftMonth(1); };
@@ -1057,59 +1155,162 @@ function renderCalendar(){
 function prevYM(y,m){ return m===0? {y:y-1,m:11} : {y:y,m:m-1}; }
 function nextYM(y,m){ return m===11? {y:y+1,m:0} : {y:y,m:m+1}; }
 
+function recordPhotos(r){
+  if(Array.isArray(r.photos) && r.photos.length) return r.photos;
+  return r.photo ? [r.photo] : [];
+}
+
 function renderDayRecords(){
   var recs = state.recipeRecords.filter(function(r){return r.date===calState.selected;});
   var box = document.getElementById('dayRecords');
   if(!recs.length){ box.innerHTML = '<div class="empty-tip">'+calState.selected+' 还没有记录</div>'; return; }
   box.innerHTML = recs.map(function(r){
     var u = findUser(r.userId);
+    var ps = recordPhotos(r);
+    var thumbs = '';
+    if(ps.length){
+      var show = ps.slice(0,2);          // 列表里最多展示 2 个缩略图，第 2 个叠加「+N」
+      thumbs = '<div class="dr-thumbs">'+show.map(function(p,i){
+        var extra = (i===1 && ps.length>2) ? '<span class="dr-thumb-more">+'+(ps.length-1)+'</span>' : '';
+        return '<button class="dr-thumb" data-lb="'+r.id+'" data-i="'+i+'" title="点击看大图"><img src="'+p+'">'+extra+'</button>';
+      }).join('')+'</div>';
+    }
     return '<div class="day-record-item">'+
-      (r.photo? '<img src="'+r.photo+'">' : '')+
-      '<div><span class="drtag '+(r.type==='在家'?'home':'out')+'">'+(r.type==='在家'?'🏠 在家':'🍜 外食')+'</span>'+
+      thumbs+
+      '<div style="min-width:0;"><span class="drtag '+(r.type==='在家'?'home':'out')+'">'+(r.type==='在家'?'🏠 在家':'🍜 外食')+'</span>'+
       '<div class="dr-note">'+(esc(r.note)||'（无备注）')+'</div>'+
-      '<div class="dr-user">'+esc(u.name)+'</div></div>'+
+      '<div class="dr-user">'+esc(u.name)+(ps.length?('　·　📷 '+ps.length+' 张'):'')+'</div></div>'+
       '<button class="icon-btn" style="margin-left:auto;" data-del="'+r.id+'">🗑️</button>'+
     '</div>';
   }).join('');
   Array.prototype.forEach.call(box.querySelectorAll('[data-del]'), function(btn){
     btn.addEventListener('click', function(){
+      if(!confirm('确定删除这条记录吗？')) return;
       state.recipeRecords = state.recipeRecords.filter(function(x){return x.id!==btn.getAttribute('data-del');});
       saveState(); renderCalendar(); renderDayRecords();
     });
   });
+  Array.prototype.forEach.call(box.querySelectorAll('[data-lb]'), function(btn){
+    btn.addEventListener('click', function(){
+      var rec = state.recipeRecords.find(function(x){return x.id===btn.getAttribute('data-lb');});
+      if(!rec) return;
+      openLightbox(recordPhotos(rec), parseInt(btn.getAttribute('data-i'),10)||0, rec);
+    });
+  });
 }
+
+/* ===== 大图浏览灯箱 ===== */
+var lbState = { list:[], idx:0, meta:'' };
+function openLightbox(list, idx, rec){
+  if(!list || !list.length) return;
+  lbState.list = list;
+  lbState.idx = Math.max(0, Math.min(list.length-1, idx||0));
+  lbState.meta = rec ? (rec.date+'　'+rec.type+(rec.note?('　·　'+rec.note):'')) : '';
+  renderLightbox();
+  document.getElementById('modalLightbox').classList.add('show');
+}
+function closeLightbox(){ document.getElementById('modalLightbox').classList.remove('show'); }
+function renderLightbox(){
+  document.getElementById('lbImg').src = lbState.list[lbState.idx] || '';
+  document.getElementById('lbCount').textContent = (lbState.idx+1)+' / '+lbState.list.length;
+  document.getElementById('lbMeta').textContent = lbState.meta || '';
+  document.getElementById('lbPrev').disabled = (lbState.idx<=0);
+  document.getElementById('lbNext').disabled = (lbState.idx>=lbState.list.length-1);
+}
+function lbStep(d){
+  var n = lbState.idx + d;
+  if(n<0 || n>=lbState.list.length) return;
+  lbState.idx = n; renderLightbox();
+}
+document.getElementById('lbClose').addEventListener('click', closeLightbox);
+document.getElementById('lbPrev').addEventListener('click', function(){ lbStep(-1); });
+document.getElementById('lbNext').addEventListener('click', function(){ lbStep(1); });
+document.getElementById('modalLightbox').addEventListener('click', function(e){
+  if(e.target === this) closeLightbox();
+});
+document.addEventListener('keydown', function(e){
+  var m = document.getElementById('modalLightbox');
+  if(!m || !m.classList.contains('show')) return;
+  if(e.key==='Escape') closeLightbox();
+  else if(e.key==='ArrowLeft') lbStep(-1);
+  else if(e.key==='ArrowRight') lbStep(1);
+});
+/* 手机端左右滑动切换大图 */
+(function(){
+  var img = document.getElementById('lbImg');
+  var sx = 0, sy = 0;
+  img.addEventListener('touchstart', function(e){
+    if(!e.touches.length) return;
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+  }, {passive:true});
+  img.addEventListener('touchend', function(e){
+    if(!e.changedTouches.length) return;
+    var dx = e.changedTouches[0].clientX - sx;
+    var dy = e.changedTouches[0].clientY - sy;
+    if(Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) lbStep(dx<0 ? 1 : -1);
+  }, {passive:true});
+})();
+
+var MAX_REC_PHOTOS = 3;
+var recordPhotoList = [];
 
 function openRecordModal(dateStr){
   document.getElementById('recDate').value = dateStr || todayStr();
   document.getElementById('recNote').value = '';
   document.getElementById('recPhoto').value = '';
-  var pv = document.getElementById('recPhotoPreview'); pv.style.display='none'; pv.src='';
   var seg = document.getElementById('recTypeSeg');
   Array.prototype.forEach.call(seg.querySelectorAll('button'), function(b,i){ b.classList.toggle('active', i===0); });
-  recordPhotoData = null;
+  recordPhotoList = [];
+  renderRecPhotoThumbs();
   openModal('modalRecord');
+}
+function renderRecPhotoThumbs(){
+  var wrap = document.getElementById('recPhotoThumbs');
+  var hint = document.getElementById('recPhotoHint');
+  var inp = document.getElementById('recPhoto');
+  wrap.innerHTML = recordPhotoList.map(function(p,i){
+    return '<div class="photo-thumb"><img src="'+p+'">'+
+           '<button class="photo-thumb-del" data-rmphoto="'+i+'" title="移除">✕</button></div>';
+  }).join('');
+  var left = MAX_REC_PHOTOS - recordPhotoList.length;
+  hint.textContent = left>0 ? ('还可以再添加 '+left+' 张') : '已达到 3 张上限';
+  if(inp) inp.disabled = (left<=0);
+  Array.prototype.forEach.call(wrap.querySelectorAll('[data-rmphoto]'), function(btn){
+    btn.addEventListener('click', function(){
+      recordPhotoList.splice(parseInt(btn.getAttribute('data-rmphoto'),10), 1);
+      renderRecPhotoThumbs();
+    });
+  });
 }
 document.getElementById('recTypeSeg').addEventListener('click', function(e){
   if(e.target.tagName!=='BUTTON') return;
   Array.prototype.forEach.call(this.querySelectorAll('button'), function(b){ b.classList.remove('active'); });
   e.target.classList.add('active');
 });
-var recordPhotoData = null;
 document.getElementById('recPhoto').addEventListener('change', function(e){
-  var file = e.target.files[0];
-  if(!file) return;
-  compressImage(file, 480, 0.6).then(function(dataUrl){
-    recordPhotoData = dataUrl;
-    var pv = document.getElementById('recPhotoPreview');
-    pv.src = dataUrl; pv.style.display='block';
+  var files = Array.prototype.slice.call(e.target.files || []);
+  if(!files.length) return;
+  var room = MAX_REC_PHOTOS - recordPhotoList.length;
+  if(room <= 0){ alert('最多只能上传 3 张照片哦～'); e.target.value=''; return; }
+  var overflow = files.length > room;
+  files = files.slice(0, room);
+  var hint = document.getElementById('recPhotoHint');
+  if(hint) hint.textContent = '正在处理照片…';
+  Promise.all(files.map(function(f){ return compressImage(f, 760, 0.7); })).then(function(list){
+    list.forEach(function(d){ if(d) recordPhotoList.push(d); });
+    renderRecPhotoThumbs();
+    if(overflow) alert('一次最多 3 张，已保留前 '+room+' 张。');
   });
+  e.target.value = '';   // 允许再次选择同一张图
 });
 document.getElementById('recSaveBtn').addEventListener('click', function(){
   var date = document.getElementById('recDate').value || todayStr();
   var type = document.getElementById('recTypeSeg').querySelector('.active').getAttribute('data-v');
   var note = document.getElementById('recNote').value.trim();
+  var photos = recordPhotoList.slice(0, MAX_REC_PHOTOS);
   state.recipeRecords.push({
-    id:uid('r'), date:date, type:type, note:note, photo:recordPhotoData||'',
+    id:uid('r'), date:date, type:type, note:note,
+    photos: photos, photo: photos[0] || '',   // photo 保留一份，兼容旧版本读取
     userId: state.currentUserId, ts: Date.now()
   });
   saveState(); closeModal('modalRecord');
@@ -1156,18 +1357,28 @@ document.getElementById('apiSaveBtn').addEventListener('click', function(){
   saveState(); closeModal('modalApi');
 });
 
+var lastAiText = '';           // 保留上一次推荐结果，重新渲染/云同步刷新后不丢失
+function setAiText(txt){
+  lastAiText = txt || '';
+  var el = document.getElementById('aiResult');
+  if(el) el.textContent = lastAiText;
+}
+
 async function callAIRecommend(){
-  var resultEl = document.getElementById('aiResult');
   var cfg = state.apiConfig;
   if(!cfg.endpoint || !cfg.key){
-    resultEl.textContent = '请先点击「API 设置」填写接口地址和密钥～';
+    setAiText('请先点击「API 设置」填写接口地址和密钥～');
     openApiModal();
     return;
   }
   var names = state.fridge.chilled.concat(state.fridge.frozen).map(function(i){return i.name;});
   var ingredients = names.length? names.join('、') : '（冰箱是空的）';
+  var ideas = (state.recipeIdeas||'').trim();
   var prompt = '我冰箱里现在有这些食材：'+ingredients+'。请据此推荐1-3道适合今天做的家常菜，说明简单做法要点，用中文回答，语言简洁。';
-  resultEl.textContent = '正在为您智能推荐，请稍候...';
+  if(ideas){
+    prompt += '\n另外这是我记下的「菜谱灵感 / 口味偏好」，请尽量结合参考：\n'+ideas.slice(0,800);
+  }
+  setAiText('正在为您智能推荐，请稍候...');
   try{
     var text;
     var proxyUrl = (cfg.proxyUrl||'').trim();
@@ -1181,13 +1392,13 @@ async function callAIRecommend(){
     }else{
       text = await callAIDirect(cfg, prompt);
     }
-    resultEl.textContent = text || '（未获得有效回复，请检查接口返回格式）';
+    setAiText(text || '（未获得有效回复，请检查接口返回格式）');
   }catch(err){
     var msg = err && err.message ? err.message : String(err);
     if(msg.indexOf('Failed to fetch')>=0 && !cfg.proxyUrl){
       msg += '（浏览器跨域被拦；请在「API 设置」填写一个代理地址，或使用支持 CORS 的接口）';
     }
-    resultEl.textContent = '推荐失败，请检查 API 设置或网络连接：'+msg;
+    setAiText('推荐失败，请检查 API 设置或网络连接：'+msg);
   }
 }
 async function callAIDirect(cfg, prompt){
@@ -1239,39 +1450,69 @@ function renderTodoView(box){
     '<p class="section-title">✅ 待办事项</p>'+
     '<div class="todo-add-row"><input id="todoInput" placeholder="添加一件要做的事，回车即可添加"><button class="btn btn-primary" id="todoAddBtn">添加</button></div>'+
     '<div class="todo-list" id="todoList"></div>'+
+    '<div id="todoFooter" style="margin-top:14px;display:none;justify-content:space-between;align-items:center;gap:10px;">'+
+      '<span class="mini-hint" id="todoStat" style="margin:0;"></span>'+
+      '<button class="btn btn-soft" id="todoClearDoneBtn">🧹 清除已完成</button>'+
+    '</div>'+
   '</div>';
   renderTodoList();
   function add(){
     var input = document.getElementById('todoInput');
     var text = input.value.trim();
     if(!text) return;
-    state.todos.push({id:uid('t'), text:text, userId: state.currentUserId, ts: Date.now()});
+    state.todos.push({id:uid('t'), text:text, done:false, userId: state.currentUserId, ts: Date.now()});
     saveState(); input.value=''; renderTodoList();
   }
   document.getElementById('todoAddBtn').onclick = add;
   document.getElementById('todoInput').addEventListener('keydown', function(e){ if(e.key==='Enter') add(); });
+  document.getElementById('todoClearDoneBtn').onclick = function(){
+    var doneCount = state.todos.filter(function(x){return x.done;}).length;
+    if(!doneCount) return;
+    if(!confirm('确定要删除这 '+doneCount+' 条已完成的待办吗？')) return;
+    state.todos = state.todos.filter(function(x){return !x.done;});
+    saveState(); renderTodoList();
+  };
 }
 function renderTodoList(){
   var list = document.getElementById('todoList');
-  if(!state.todos.length){ list.innerHTML='<div class="empty-tip">暂无待办事项，添加一个吧～</div>'; return; }
+  if(!list) return;
+  var footer = document.getElementById('todoFooter');
+  if(!state.todos.length){
+    list.innerHTML='<div class="empty-tip">暂无待办事项，添加一个吧～</div>';
+    if(footer) footer.style.display = 'none';
+    return;
+  }
   var sorted = state.todos.slice().sort(function(a,b){return b.ts-a.ts;});
   list.innerHTML = sorted.map(function(t){
     var u = findUser(t.userId);
-    return '<div class="todo-item">'+
-      '<button class="todo-check" title="完成并移除" data-done="'+t.id+'"></button>'+
+    var done = !!t.done;
+    return '<div class="todo-item'+(done?' done':'')+'">'+
+      '<button class="todo-check'+(done?' checked':'')+'" title="'+(done?'取消完成':'标记完成')+'" data-done="'+t.id+'">'+(done?'✓':'')+'</button>'+
       '<input class="todo-text" value="'+esc(t.text)+'" data-edit="'+t.id+'">'+
       '<span class="todo-user-tag" style="background:'+u.color+'">'+esc(u.name)+'</span>'+
-      '<button class="todo-del" title="删除" data-del="'+t.id+'">🗑️</button>'+
+      '<button class="todo-del" title="彻底删除" data-del="'+t.id+'">🗑️</button>'+
     '</div>';
   }).join('');
+  var doneCount = state.todos.filter(function(x){return x.done;}).length;
+  if(footer){
+    footer.style.display = 'flex';
+    var stat = document.getElementById('todoStat');
+    if(stat) stat.textContent = '共 '+state.todos.length+' 条，已完成 '+doneCount+' 条（勾选只划掉，不会删除）';
+    var clr = document.getElementById('todoClearDoneBtn');
+    if(clr) clr.disabled = (doneCount===0);
+  }
   Array.prototype.forEach.call(list.querySelectorAll('[data-done]'), function(btn){
     btn.addEventListener('click', function(){
-      state.todos = state.todos.filter(function(x){return x.id!==btn.getAttribute('data-done');});
+      var t = state.todos.find(function(x){return x.id===btn.getAttribute('data-done');});
+      if(!t) return;
+      t.done = !t.done;
       saveState(); renderTodoList();
     });
   });
   Array.prototype.forEach.call(list.querySelectorAll('[data-del]'), function(btn){
     btn.addEventListener('click', function(){
+      var t = state.todos.find(function(x){return x.id===btn.getAttribute('data-del');});
+      if(t && !confirm('彻底删除待办「'+t.text+'」？')) return;
       state.todos = state.todos.filter(function(x){return x.id!==btn.getAttribute('data-del');});
       saveState(); renderTodoList();
     });
