@@ -241,11 +241,12 @@
   .fridge-head-actions{display:flex;gap:8px;}
   .fridge-list{display:flex;flex-direction:column;gap:10px;}
   .fridge-item-wrap{position:relative;border-radius:12px;overflow:hidden;}
-  .fridge-item-delete{
-    position:absolute;top:0;right:0;bottom:0;width:72px;
-    background:var(--danger);color:#fff;border:none;
-    display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;
+  .fridge-item-edit, .fridge-item-delete{
+    position:absolute;top:0;bottom:0;width:72px;
+    border:none;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;color:#fff;
   }
+  .fridge-item-edit{right:72px;background:var(--accent);}
+  .fridge-item-delete{right:0;background:var(--danger);}
   .fridge-item-content{
     position:relative;background:#FFFDFA;border:1px solid var(--border);
     padding:12px 14px;border-radius:12px;
@@ -612,7 +613,7 @@ function syncSave(){
   if(syncTimer) clearTimeout(syncTimer);
   syncTimer = setTimeout(function(){
     var now = Date.now();
-    justSynced = now; lastSeenTs = now;
+    justSynced = now;   // justSynced 仅用于本机 2s 内跳过自身回声，使用本机时间即可
     try{
       // currentUserId 和 apiConfig 是设备本地偏好，不参与云同步
       var dataToSync = JSON.parse(JSON.stringify(state));
@@ -620,9 +621,20 @@ function syncSave(){
       delete dataToSync.apiConfig;
       fetch(sbBase(), {
         method:'POST',
-        headers: Object.assign({ 'Prefer': 'resolution=merge-duplicates' }, sbHeaders()),
+        // return=representation：让服务端把写入后的行（含服务端 updated_at）返回，
+        // 以便用「服务端时间」统一作为 lastSeenTs 基准，避免各设备时钟与服务端不一致导致漏拉
+        headers: Object.assign({ 'Prefer': 'return=representation, resolution=merge-duplicates' }, sbHeaders()),
         body: JSON.stringify({ code: code, data: dataToSync, updated_at: new Date(now).toISOString() })
-      }).catch(function(){});
+      })
+      .then(function(r){ return r.json(); })
+      .then(function(rows){
+        // 用服务端时间戳更新 lastSeenTs：跨设备比较时始终以服务端时间为准，修复时钟差造成的不同步
+        if(Array.isArray(rows) && rows.length && rows[0] && rows[0].updated_at){
+          var ts = new Date(rows[0].updated_at).getTime();
+          if(ts) lastSeenTs = ts;
+        }
+      })
+      .catch(function(){});
     }catch(e){}
   }, 800);
 }
@@ -956,6 +968,7 @@ function renderFridgeView(box){
       var soon = dl!==null && dl>=0 && dl<=2;
       var metaTxt = (it.expiry? ('保质期至 '+it.expiry+(expired?'（已过期）':soon?'（还剩'+dl+'天）':'')) : '未设置保质期') + (it.qty? ('　·　'+esc(it.qty)) : '');
       return '<div class="fridge-item-wrap">'+
+        '<button class="fridge-item-edit" data-key="'+key+'" data-id="'+it.id+'">✏️</button>'+
         '<button class="fridge-item-delete" data-key="'+key+'" data-id="'+it.id+'">🗑️</button>'+
         '<div class="fridge-item-content" data-key="'+key+'" data-id="'+it.id+'">'+
           '<div class="fi-name'+(expired?' expired':'')+'">'+esc(it.name)+'</div>'+
@@ -1004,6 +1017,11 @@ function renderFridgeView(box){
       saveState(); renderContent();
     });
   });
+  Array.prototype.forEach.call(box.querySelectorAll('.fridge-item-edit'), function(btn){
+    btn.addEventListener('click', function(){
+      openFridgeModal(btn.getAttribute('data-key'), btn.getAttribute('data-id'));
+    });
+  });
   bindFridgeSwipe(box);
 }
 
@@ -1038,8 +1056,8 @@ function bindFridgeSwipe(box){
       if(!dragging) return;
       var dx = e.clientX - startX;
       var dy = e.clientY - startY;
-      curX = Math.max(-72, Math.min(0, dx));
-      // 横向位移明显且大于纵向位移 → 判定为「滑动」（用于露出删除按钮）
+      curX = Math.max(-144, Math.min(0, dx));   // 左滑最多露出「编辑 + 删除」两个 72px 按钮
+      // 横向位移明显且大于纵向位移 → 判定为「滑动」（用于露出操作按钮）
       // 阈值取 8px，可容忍单击时的轻微抖动，避免误判为滑动
       if(Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) swiped = true;
       el.style.transform = 'translateX('+curX+'px)';
@@ -1049,14 +1067,9 @@ function bindFridgeSwipe(box){
       dragging=false;
       el.classList.remove('dragging'); el.classList.add('snap');
       if(swiped && curX < -36){
-        el.style.transform='translateX(-72px)';   // 滑过阈值：露出删除按钮
+        el.style.transform='translateX(-144px)';   // 滑过阈值：露出「编辑 / 删除」按钮
       } else {
-        el.style.transform='translateX(0px)';
-      }
-      // 不是滑动 → 视为「单击」，打开该食材的编辑页
-      if(!swiped){
-        el.style.transform='translateX(0px)';
-        openFridgeModal(el.getAttribute('data-key'), el.getAttribute('data-id'));
+        el.style.transform='translateX(0px)';       // 滑回或未滑动：收起（单击不打开编辑页）
       }
     }
     el.addEventListener('pointerup', endDrag);
