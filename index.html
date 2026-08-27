@@ -612,38 +612,52 @@ function syncSave(){
   if(!code) return;
   if(syncTimer) clearTimeout(syncTimer);
   syncTimer = setTimeout(function(){
-    var now = Date.now();
-    justSynced = now;   // justSynced 仅用于本机 2s 内跳过自身回声，使用本机时间即可
-    try{
-      // currentUserId 和 apiConfig 是设备本地偏好，不参与云同步
-      var dataToSync = JSON.parse(JSON.stringify(state));
-      delete dataToSync.currentUserId;
-      delete dataToSync.apiConfig;
-      // 读-合并-写：先取云端当前数据，与本地合并（本地优先、并入云端其余条目）后再写回，
-      // 避免「整行覆盖」冲掉其他设备刚做的改动 → 解决「更新后跳回原数据」
-      fetch(sbBase() + '?code=eq.' + encodeURIComponent(code) + '&select=data&limit=1', { headers: sbHeaders(), cache: 'no-store' })
-      .then(function(r){ return r.json(); })
-      .then(function(rows){
-        var base = (Array.isArray(rows) && rows.length && rows[0] && rows[0].data) ? rows[0].data : null;
-        var merged = mergeState(dataToSync, base);   // 第一参=本地(优先)，第二参=云端
-        return fetch(sbBase(), {
-          method:'POST',
-          // return=representation：让服务端把写入后的行（含服务端 updated_at）返回，
-          // 以便用「服务端时间」统一作为 lastSeenTs 基准，避免各设备时钟与服务端不一致导致漏拉
-          headers: Object.assign({ 'Prefer': 'return=representation, resolution=merge-duplicates' }, sbHeaders()),
-          body: JSON.stringify({ code: code, data: merged, updated_at: new Date(now).toISOString() })
-        });
-      })
-      .then(function(r){ return r.json(); })
-      .then(function(rows){
-        // 用服务端时间戳更新 lastSeenTs：跨设备比较时始终以服务端时间为准，修复时钟差造成的不同步
-        if(Array.isArray(rows) && rows.length && rows[0] && rows[0].updated_at){
-          var ts = new Date(rows[0].updated_at).getTime();
-          if(ts) lastSeenTs = ts;
-        }
-      })
-      .catch(function(){});
-    }catch(e){}
+    justSynced = Date.now();   // 仅用于本机 2s 内跳过自身回声，使用本机时间即可
+    var attempt = 0;
+    function tryOnce(){
+      attempt++;
+      try{
+        // currentUserId 和 apiConfig 是设备本地偏好，不参与云同步
+        var dataToSync = JSON.parse(JSON.stringify(state));
+        delete dataToSync.currentUserId;
+        delete dataToSync.apiConfig;
+        // 1) 读取云端当前数据与原始 updated_at（保留字符串，避免 ISO 毫秒精度丢失导致比较失败）
+        fetch(sbBase() + '?code=eq.' + encodeURIComponent(code) + '&select=data,updated_at&limit=1', { headers: sbHeaders(), cache:'no-store' })
+        .then(function(r){ return r.json(); })
+        .then(function(rows){
+          var base = (rows && rows[0] && rows[0].data) ? rows[0].data : null;
+          var baseTs = (rows && rows[0] && rows[0].updated_at) ? rows[0].updated_at : null;
+          // 2) 按 id 并集 + LWW 合并（本地优先并入云端其余条目），得到要写回的完整状态
+          var merged = mergeState(dataToSync, base);
+          // 3) 比较并交换（CAS）：带上一次读到的 updated_at 作为过滤条件，仅当云端未被别的设备改动才写入；
+          //    否则 PATCH 命中 0 行 → 说明发生并发写入 → 自动重读并重试（最多 4 次），彻底避免「互相覆盖/更新丢失」。
+          var url = sbBase() + '?code=eq.' + encodeURIComponent(code);
+          var headers = Object.assign({ 'Prefer':'return=representation' }, sbHeaders());
+          var method, body;
+          if(baseTs){
+            url += '&updated_at=eq.' + encodeURIComponent(baseTs);
+            method = 'PATCH';
+            body = JSON.stringify({ data: merged });
+          }else{
+            method = 'POST';
+            body = JSON.stringify({ code: code, data: merged, updated_at: new Date().toISOString() });
+          }
+          return fetch(url, { method:method, headers:headers, body:body })
+          .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, rows:j }; }); })
+          .then(function(res){
+            if(res.rows && res.rows.length){
+              // 用服务端时间戳更新 lastSeenTs：跨设备比较始终以服务端时间为准，修复时钟差造成的不同步
+              var ts = new Date(res.rows[0].updated_at).getTime();
+              if(ts) lastSeenTs = ts;
+            }else if(attempt < 4){
+              return tryOnce();   // 并发冲突或写入未生效 → 重试（重读+重合并）
+            }
+          });
+        })
+        .catch(function(){ if(attempt < 4) return tryOnce(); });
+      }catch(e){ if(attempt < 4) return tryOnce(); }
+    }
+    tryOnce();
   }, 800);
 }
 function syncLoad(cb){
@@ -780,21 +794,56 @@ function normalizeState(){
     if(!Array.isArray(r.photos)){ r.photos = r.photo ? [r.photo] : []; }
   });
   state.todos.forEach(function(t){ if(typeof t.done !== 'boolean') t.done = false; });
+  /* 旧数据补齐 updatedAt：用于跨设备「最后写入获胜(LWW)」合并，避免本地旧副本覆盖云端新改动导致回退。
+     新条目在创建/编辑时写入真实时间戳；此处仅给历史条目一个固定旧值(1)，使任何真实编辑都优先。 */
+  [['chilled'],['frozen']].forEach(function(p){
+    (state.fridge[p[0]]||[]).forEach(function(it){ if(it && it.id && !it.updatedAt) it.updatedAt = 1; });
+  });
+  state.todos.forEach(function(it){ if(it && it.id && !it.updatedAt) it.updatedAt = 1; });
+  state.recipeRecords.forEach(function(it){ if(it && it.id && !it.updatedAt) it.updatedAt = 1; });
+  state.users.forEach(function(it){ if(it && it.id && !it.updatedAt) it.updatedAt = 1; });
+  state.modules.forEach(function(it){ if(it && it.id && !it.updatedAt) it.updatedAt = 1; });
 }
 
 /* =========================================================
    跨设备合并：按条目 id 并集（本地优先），删除用墓碑(_del)传播
    解决「整行覆盖导致彼此改动被冲掉、更新几秒后跳回原数据」
    ========================================================= */
-function unionById(localArr, remoteArr, delMap){
+function unionById(localArr, remoteArr, delMap, lww){
+  if(lww === false){
+    // 兼容旧逻辑：本地优先（目前未使用，保留以防回退）
+    var m0 = {};
+    (localArr||[]).forEach(function(it){ if(it && it.id) m0[it.id] = it; });
+    (remoteArr||[]).forEach(function(it){ if(it && it.id && !m0[it.id]) m0[it.id] = it; });
+    if(delMap){ Object.keys(delMap).forEach(function(id){ if(m0[id]) delete m0[id]; }); }
+    var r0 = [];
+    (localArr||[]).forEach(function(it){ if(it && it.id && m0[it.id]){ r0.push(m0[it.id]); delete m0[it.id]; } });
+    Object.keys(m0).forEach(function(k){ r0.push(m0[k]); });
+    return r0;
+  }
+  // 默认 LWW（Last-Write-Wins）：按 updatedAt 取较新版本，解决「本地旧副本覆盖云端新改动 → 数据回退」
   var map = {};
+  function pick(existing, incoming){
+    if(!existing) return incoming;
+    if(!incoming) return existing;
+    var lt = existing.updatedAt || 0, rt = incoming.updatedAt || 0;
+    return (rt >= lt) ? incoming : existing;
+  }
   (localArr||[]).forEach(function(it){ if(it && it.id) map[it.id] = it; });
-  // 本地优先：仅并入云端独有的条目，避免覆盖本地未保存/较新的改动
-  (remoteArr||[]).forEach(function(it){ if(it && it.id && !map[it.id]) map[it.id] = it; });
-  if(delMap){ Object.keys(delMap).forEach(function(id){ if(map[id]) delete map[id]; }); }
-  // 顺序：本地原有在前，云端新增在后
+  (remoteArr||[]).forEach(function(it){ if(it && it.id) map[it.id] = pick(map[it.id], it); });
+  if(delMap){
+    Object.keys(delMap).forEach(function(id){
+      var tomb = delMap[id] || 0;
+      var it = map[id];
+      if(it){
+        // 墓碑时间 >= 条目最后编辑时间才真正删除；否则视为「删除后又被重新编辑」予以保留，避免误删
+        if(tomb >= (it.updatedAt || 0)) delete map[id];
+      }
+    });
+  }
   var res = [];
   (localArr||[]).forEach(function(it){ if(it && it.id && map[it.id]){ res.push(map[it.id]); delete map[it.id]; } });
+  (remoteArr||[]).forEach(function(it){ if(it && it.id && map[it.id]){ res.push(map[it.id]); delete map[it.id]; } });
   Object.keys(map).forEach(function(k){ res.push(map[k]); });
   return res;
 }
@@ -813,12 +862,12 @@ function mergeState(local, remote){
   ['chilled','frozen','recipeRecords','todos','users'].forEach(function(t){ rdel[t]=rdel[t]||{}; });
   var mdel = {};
   ['chilled','frozen','recipeRecords','todos','users'].forEach(function(t){ mdel[t] = Object.assign({}, out._del[t]||{}, rdel[t]||{}); });
-  out.fridge.chilled = unionById(out.fridge.chilled, remote.fridge && remote.fridge.chilled, mdel.chilled);
-  out.fridge.frozen  = unionById(out.fridge.frozen,  remote.fridge && remote.fridge.frozen,  mdel.frozen);
-  out.todos          = unionById(out.todos,          remote.todos,          mdel.todos);
-  out.recipeRecords  = unionById(out.recipeRecords,  remote.recipeRecords,  mdel.recipeRecords);
-  out.users          = unionById(out.users,          remote.users,          mdel.users);
-  out.modules        = unionById(out.modules,        remote.modules,        null);   // 模块仅合并新增/改名，不传播删除
+  out.fridge.chilled = unionById(out.fridge.chilled, remote.fridge && remote.fridge.chilled, mdel.chilled, true);
+  out.fridge.frozen  = unionById(out.fridge.frozen,  remote.fridge && remote.fridge.frozen,  mdel.frozen, true);
+  out.todos          = unionById(out.todos,          remote.todos,          mdel.todos, true);
+  out.recipeRecords  = unionById(out.recipeRecords,  remote.recipeRecords,  mdel.recipeRecords, true);
+  out.users          = unionById(out.users,          remote.users,          mdel.users, true);
+  out.modules        = unionById(out.modules,        remote.modules,        null, true);   // 模块按 LWW 合并新增/改名，不传播删除
   if(remote.recipeIdeas && !out.recipeIdeas) out.recipeIdeas = remote.recipeIdeas;
   out.customNotes = Object.assign({}, remote.customNotes||{}, out.customNotes||{});
   out._del = mdel;
@@ -960,7 +1009,7 @@ function renderUserBox(){
     var name = prompt('新家庭成员的名字：');
     if(!name) return;
     var color = COLORS[state.users.length % COLORS.length];
-    var u = {id:uid('u'), name:name.trim(), color:color};
+    var u = {id:uid('u'), name:name.trim(), color:color, updatedAt: Date.now()};
     state.users.push(u);
     state.currentUserId = u.id;
     saveState();
@@ -1158,9 +1207,9 @@ document.getElementById('fridgeSaveBtn').addEventListener('click', function(){
   var qty = document.getElementById('fridgeQty').value.trim();
   if(fridgeCtx.id){
     var item = state.fridge[fridgeCtx.key].find(function(x){return x.id===fridgeCtx.id;});
-    item.name=name; item.expiry=expiry; item.qty=qty;
+    item.name=name; item.expiry=expiry; item.qty=qty; item.updatedAt=Date.now();
   }else{
-    state.fridge[fridgeCtx.key].push({id:uid('f'), name:name, expiry:expiry, qty:qty});
+    state.fridge[fridgeCtx.key].push({id:uid('f'), name:name, expiry:expiry, qty:qty, updatedAt:Date.now()});
   }
   saveState(); closeModal('modalFridge'); renderContent();
 });
@@ -1395,7 +1444,7 @@ document.getElementById('recSaveBtn').addEventListener('click', function(){
   state.recipeRecords.push({
     id:uid('r'), date:date, type:type, note:note,
     photos: photos, photo: photos[0] || '',   // photo 保留一份，兼容旧版本读取
-    userId: state.currentUserId, ts: Date.now()
+    userId: state.currentUserId, ts: Date.now(), updatedAt: Date.now()
   });
   saveState(); closeModal('modalRecord');
   calState.selected = date;
@@ -1551,7 +1600,7 @@ function renderTodoView(box){
     var input = document.getElementById('todoInput');
     var text = input.value.trim();
     if(!text) return;
-    state.todos.push({id:uid('t'), text:text, done:false, userId: state.currentUserId, ts: Date.now()});
+    state.todos.push({id:uid('t'), text:text, done:false, userId: state.currentUserId, ts: Date.now(), updatedAt: Date.now()});
     saveState(); input.value=''; renderTodoList();
   }
   document.getElementById('todoAddBtn').onclick = add;
@@ -1598,7 +1647,7 @@ function renderTodoList(){
     btn.addEventListener('click', function(){
       var t = state.todos.find(function(x){return x.id===btn.getAttribute('data-done');});
       if(!t) return;
-      t.done = !t.done;
+      t.done = !t.done; t.updatedAt = Date.now();
       saveState(); renderTodoList();
     });
   });
@@ -1615,7 +1664,7 @@ function renderTodoList(){
   Array.prototype.forEach.call(list.querySelectorAll('[data-edit]'), function(inp){
     inp.addEventListener('change', function(){
       var t = state.todos.find(function(x){return x.id===inp.getAttribute('data-edit');});
-      if(t){ t.text = inp.value.trim() || t.text; saveState(); }
+      if(t){ t.text = inp.value.trim() || t.text; t.updatedAt = Date.now(); saveState(); }
     });
   });
 }
@@ -1719,14 +1768,14 @@ function renderMgmtView(box){
       var name = prompt('新二级模块名称：'); if(!name) return;
       var icon = prompt('给它选个图标 emoji（可留空）：','📝') || '📝';
       var l1 = getL1(el.getAttribute('data-addl2'));
-      l1.children.push({id:uid('l2'), name:name.trim(), icon:icon, enabled:true, order:l1.children.length, type:'custom'});
+      l1.children.push({id:uid('l2'), name:name.trim(), icon:icon, enabled:true, order:l1.children.length, type:'custom', updatedAt: Date.now()});
       saveState(); renderSidebar(); renderMgmtView(box);
     });
   });
   document.getElementById('addL1Btn').addEventListener('click', function(){
     var name = prompt('新一级模块名称：'); if(!name) return;
     var icon = prompt('给它选个图标 emoji（可留空）：','📁') || '📁';
-    state.modules.push({id:uid('l1'), name:name.trim(), icon:icon, enabled:true, order:state.modules.length, children:[]});
+    state.modules.push({id:uid('l1'), name:name.trim(), icon:icon, enabled:true, order:state.modules.length, children:[], updatedAt: Date.now()});
     saveState(); renderSidebar(); renderMgmtView(box);
   });
 }
