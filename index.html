@@ -619,12 +619,20 @@ function syncSave(){
       var dataToSync = JSON.parse(JSON.stringify(state));
       delete dataToSync.currentUserId;
       delete dataToSync.apiConfig;
-      fetch(sbBase(), {
-        method:'POST',
-        // return=representation：让服务端把写入后的行（含服务端 updated_at）返回，
-        // 以便用「服务端时间」统一作为 lastSeenTs 基准，避免各设备时钟与服务端不一致导致漏拉
-        headers: Object.assign({ 'Prefer': 'return=representation, resolution=merge-duplicates' }, sbHeaders()),
-        body: JSON.stringify({ code: code, data: dataToSync, updated_at: new Date(now).toISOString() })
+      // 读-合并-写：先取云端当前数据，与本地合并（本地优先、并入云端其余条目）后再写回，
+      // 避免「整行覆盖」冲掉其他设备刚做的改动 → 解决「更新后跳回原数据」
+      fetch(sbBase() + '?code=eq.' + encodeURIComponent(code) + '&select=data&limit=1', { headers: sbHeaders(), cache: 'no-store' })
+      .then(function(r){ return r.json(); })
+      .then(function(rows){
+        var base = (Array.isArray(rows) && rows.length && rows[0] && rows[0].data) ? rows[0].data : null;
+        var merged = mergeState(dataToSync, base);   // 第一参=本地(优先)，第二参=云端
+        return fetch(sbBase(), {
+          method:'POST',
+          // return=representation：让服务端把写入后的行（含服务端 updated_at）返回，
+          // 以便用「服务端时间」统一作为 lastSeenTs 基准，避免各设备时钟与服务端不一致导致漏拉
+          headers: Object.assign({ 'Prefer': 'return=representation, resolution=merge-duplicates' }, sbHeaders()),
+          body: JSON.stringify({ code: code, data: merged, updated_at: new Date(now).toISOString() })
+        });
       })
       .then(function(r){ return r.json(); })
       .then(function(rows){
@@ -649,7 +657,8 @@ function syncLoad(cb){
         // currentUserId 和 apiConfig 是设备本地偏好，从云端拉取时保留本地值
         var localCurrentUserId = state.currentUserId;
         var localApiConfig = state.apiConfig;
-        state = rows[0].data;
+        // 与本地合并（按 id 并集，本地优先），避免拉取时整行覆盖冲掉本地改动
+        state = mergeState(state, rows[0].data);
         // 恢复本地偏好：当前选中成员
         if(localCurrentUserId && state.users && state.users.some(function(u){return u.id===localCurrentUserId;})){
           state.currentUserId = localCurrentUserId;
@@ -731,7 +740,8 @@ function defaultState(){
     recipeIdeas:'',
     apiConfig:{endpoint:'', key:'', model:'gpt-3.5-turbo', proxyUrl:''},
     todos:[],
-    customNotes:{}
+    customNotes:{},
+    _del:{chilled:{},frozen:{},todos:{},recipeRecords:{},users:{}}
   };
 }
 
@@ -762,11 +772,57 @@ function normalizeState(){
   else if(!('proxyUrl' in state.apiConfig)) state.apiConfig.proxyUrl = '';
   if(!state.todos) state.todos = [];
   if(!state.customNotes) state.customNotes = {};
+  /* 同步用墓碑：记录已删除条目的 id，便于跨设备传播「删除」 */
+  if(!state._del) state._del = {};
+  ['chilled','frozen','recipeRecords','todos','users'].forEach(function(t){ if(!state._del[t]) state._del[t]={}; });
   /* 兼容旧数据：照片统一为 photos 数组；待办补齐 done 字段 */
   state.recipeRecords.forEach(function(r){
     if(!Array.isArray(r.photos)){ r.photos = r.photo ? [r.photo] : []; }
   });
   state.todos.forEach(function(t){ if(typeof t.done !== 'boolean') t.done = false; });
+}
+
+/* =========================================================
+   跨设备合并：按条目 id 并集（本地优先），删除用墓碑(_del)传播
+   解决「整行覆盖导致彼此改动被冲掉、更新几秒后跳回原数据」
+   ========================================================= */
+function unionById(localArr, remoteArr, delMap){
+  var map = {};
+  (localArr||[]).forEach(function(it){ if(it && it.id) map[it.id] = it; });
+  // 本地优先：仅并入云端独有的条目，避免覆盖本地未保存/较新的改动
+  (remoteArr||[]).forEach(function(it){ if(it && it.id && !map[it.id]) map[it.id] = it; });
+  if(delMap){ Object.keys(delMap).forEach(function(id){ if(map[id]) delete map[id]; }); }
+  // 顺序：本地原有在前，云端新增在后
+  var res = [];
+  (localArr||[]).forEach(function(it){ if(it && it.id && map[it.id]){ res.push(map[it.id]); delete map[it.id]; } });
+  Object.keys(map).forEach(function(k){ res.push(map[k]); });
+  return res;
+}
+function mergeState(local, remote){
+  var out = JSON.parse(JSON.stringify(local || {}));
+  if(!remote || typeof remote!=='object') return out;
+  out.fridge = out.fridge || {chilled:[],frozen:[]};
+  out.todos = out.todos || [];
+  out.recipeRecords = out.recipeRecords || [];
+  out.users = out.users || [];
+  out.modules = out.modules || [];
+  out._del = out._del || {};
+  out.customNotes = out.customNotes || {};
+  ['chilled','frozen','recipeRecords','todos','users'].forEach(function(t){ if(!out._del[t]) out._del[t]={}; });
+  var rdel = remote._del || {};
+  ['chilled','frozen','recipeRecords','todos','users'].forEach(function(t){ rdel[t]=rdel[t]||{}; });
+  var mdel = {};
+  ['chilled','frozen','recipeRecords','todos','users'].forEach(function(t){ mdel[t] = Object.assign({}, out._del[t]||{}, rdel[t]||{}); });
+  out.fridge.chilled = unionById(out.fridge.chilled, remote.fridge && remote.fridge.chilled, mdel.chilled);
+  out.fridge.frozen  = unionById(out.fridge.frozen,  remote.fridge && remote.fridge.frozen,  mdel.frozen);
+  out.todos          = unionById(out.todos,          remote.todos,          mdel.todos);
+  out.recipeRecords  = unionById(out.recipeRecords,  remote.recipeRecords,  mdel.recipeRecords);
+  out.users          = unionById(out.users,          remote.users,          mdel.users);
+  out.modules        = unionById(out.modules,        remote.modules,        null);   // 模块仅合并新增/改名，不传播删除
+  if(remote.recipeIdeas && !out.recipeIdeas) out.recipeIdeas = remote.recipeIdeas;
+  out.customNotes = Object.assign({}, remote.customNotes||{}, out.customNotes||{});
+  out._del = mdel;
+  return out;
 }
 
 var suppressBroadcast = false;
@@ -915,6 +971,7 @@ function renderUserBox(){
     var u = findUser(state.currentUserId);
     if(!confirm('确定删除成员「'+(u?u.name:'')+'」吗？')) return;
     state.users = state.users.filter(function(x){return x.id!==u.id;});
+    if(state._del.users) state._del.users[u.id] = Date.now();
     state.currentUserId = state.users.length ? state.users[0].id : null;
     saveState(); renderUserBox();
   };
@@ -1014,6 +1071,7 @@ function renderFridgeView(box){
     btn.addEventListener('click', function(){
       var key = btn.getAttribute('data-key'), id = btn.getAttribute('data-id');
       state.fridge[key] = state.fridge[key].filter(function(x){return x.id!==id;});
+      if(state._del[key]) state._del[key][id] = Date.now();   // 墓碑：跨设备传播删除
       saveState(); renderContent();
     });
   });
@@ -1210,7 +1268,9 @@ function renderDayRecords(){
   Array.prototype.forEach.call(box.querySelectorAll('[data-del]'), function(btn){
     btn.addEventListener('click', function(){
       if(!confirm('确定删除这条记录吗？')) return;
-      state.recipeRecords = state.recipeRecords.filter(function(x){return x.id!==btn.getAttribute('data-del');});
+      var rid = btn.getAttribute('data-del');
+      state.recipeRecords = state.recipeRecords.filter(function(x){return x.id!==rid;});
+      if(state._del.recipeRecords) state._del.recipeRecords[rid] = Date.now();
       saveState(); renderCalendar(); renderDayRecords();
     });
   });
@@ -1500,7 +1560,9 @@ function renderTodoView(box){
     var doneCount = state.todos.filter(function(x){return x.done;}).length;
     if(!doneCount) return;
     if(!confirm('确定要删除这 '+doneCount+' 条已完成的待办吗？')) return;
+    var removed = state.todos.filter(function(x){return x.done;});
     state.todos = state.todos.filter(function(x){return !x.done;});
+    if(state._del.todos){ removed.forEach(function(x){ state._del.todos[x.id] = Date.now(); }); }
     saveState(); renderTodoList();
   };
 }
@@ -1544,7 +1606,9 @@ function renderTodoList(){
     btn.addEventListener('click', function(){
       var t = state.todos.find(function(x){return x.id===btn.getAttribute('data-del');});
       if(t && !confirm('彻底删除待办「'+t.text+'」？')) return;
-      state.todos = state.todos.filter(function(x){return x.id!==btn.getAttribute('data-del');});
+      var tid = btn.getAttribute('data-del');
+      state.todos = state.todos.filter(function(x){return x.id!==tid;});
+      if(state._del.todos) state._del.todos[tid] = Date.now();
       saveState(); renderTodoList();
     });
   });
