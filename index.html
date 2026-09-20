@@ -874,12 +874,175 @@ function mergeState(local, remote){
   return out;
 }
 
+/* ============ 照片存储层 ============
+   照片原本以 base64 塞进 localStorage，而 localStorage 只有 5~10MB，几十张照片就写满，
+   导致「保存失败」。现在改为：
+     优先上传到 Supabase Storage → state 里存 https 图片地址（约 100 字节）；
+     若 bucket 未建或上传失败 → 降级存 IndexedDB（本机可达数百 MB）→ state 里存 idb:xxx 引用。
+   这样 localStorage 与云端同步的数据都只剩引用，不再被照片撑爆。
+=================================== */
+var PHOTO_BUCKET = 'photos';
+var photoCache = Object.create(null);   // 引用 -> 可直接显示的 src
+var _sbPhotoOk = null;                  // null=未知 true=Storage可用 false=已降级
+
+function isDataUrl(s){ return typeof s === 'string' && s.indexOf('data:image/') === 0; }
+function isHttpUrl(s){ return typeof s === 'string' && /^https?:\/\//i.test(s); }
+function isIdbRef(s){ return typeof s === 'string' && s.indexOf('idb:') === 0; }
+
+/* ---- IndexedDB ---- */
+var _idbPromise = null;
+function idbOpen(){
+  if(_idbPromise) return _idbPromise;
+  _idbPromise = new Promise(function(resolve, reject){
+    var req;
+    try{ req = indexedDB.open('jjll_photos', 1); }catch(e){ reject(e); return; }
+    req.onupgradeneeded = function(){
+      var db = req.result;
+      if(!db.objectStoreNames.contains('photos')) db.createObjectStore('photos');
+    };
+    req.onsuccess = function(){ resolve(req.result); };
+    req.onerror = function(){ reject(req.error); };
+  });
+  return _idbPromise;
+}
+function idbPut(dataUrl){
+  var key = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+  return idbOpen().then(function(db){
+    return new Promise(function(resolve, reject){
+      var tx = db.transaction('photos', 'readwrite');
+      tx.objectStore('photos').put(dataUrl, key);
+      tx.oncomplete = function(){ resolve('idb:' + key); };
+      tx.onerror = function(){ reject(tx.error); };
+    });
+  });
+}
+function idbGet(key){
+  return idbOpen().then(function(db){
+    return new Promise(function(resolve){
+      var tx = db.transaction('photos', 'readonly');
+      var r = tx.objectStore('photos').get(key);
+      r.onsuccess = function(){ resolve(r.result || ''); };
+      r.onerror = function(){ resolve(''); };
+    });
+  }).catch(function(){ return ''; });
+}
+function idbGetMany(keys){
+  if(!keys.length) return Promise.resolve({});
+  return idbOpen().then(function(db){
+    return new Promise(function(resolve){
+      var out = {}, left = keys.length, tx = db.transaction('photos', 'readonly'), os = tx.objectStore('photos');
+      keys.forEach(function(k){
+        var r = os.get(k);
+        r.onsuccess = function(){ if(r.result) out['idb:'+k] = r.result; if(--left<=0) resolve(out); };
+        r.onerror = function(){ if(--left<=0) resolve(out); };
+      });
+    });
+  }).catch(function(){ return {}; });
+}
+
+/* ---- Supabase Storage ---- */
+function dataUrlToBlob(dataUrl){
+  var parts = String(dataUrl).split(',');
+  var mime = (parts[0].match(/:(.*?);/) || [])[1] || 'image/jpeg';
+  var bin = atob(parts[1] || '');
+  var arr = new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+function sbUploadPhoto(dataUrl){
+  if(!syncEnabled) return Promise.reject(new Error('no-sync'));
+  var code = (getFamilyCode() || 'public').replace(/[^a-zA-Z0-9_-]/g,'');
+  var name = code + '/' + Date.now().toString(36) + Math.random().toString(36).slice(2,8) + '.jpg';
+  var base = (SUPABASE_URL || '').replace(/\/+$/,'');
+  return fetch(base + '/storage/v1/object/' + PHOTO_BUCKET + '/' + name, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON,
+      'Content-Type': 'image/jpeg', 'x-upsert': 'true'
+    },
+    body: dataUrlToBlob(dataUrl)
+  }).then(function(r){
+    if(!r.ok) throw new Error('upload-failed');
+    return base + '/storage/v1/object/public/' + PHOTO_BUCKET + '/' + name;
+  });
+}
+
+/* ---- 统一入口：dataUrl -> 引用 ---- */
+function storePhoto(p){
+  if(!p) return Promise.resolve('');
+  if(isHttpUrl(p) || isIdbRef(p)) return Promise.resolve(p);   // 已经是引用
+  if(!isDataUrl(p)) return Promise.resolve(p);
+  function toIdb(){
+    return idbPut(p).catch(function(){ return p; });   // 极端情况仍退回 base64
+  }
+  if(_sbPhotoOk === false) return toIdb();
+  return sbUploadPhoto(p).then(function(url){
+    _sbPhotoOk = true;
+    return url;
+  }).catch(function(){
+    _sbPhotoOk = false;
+    return toIdb();
+  });
+}
+function storePhotos(list){ return Promise.all((list || []).map(storePhoto)); }
+
+/* ---- 显示：引用 -> 可显示的 src ---- */
+function resolvePhoto(ref){
+  if(!ref) return Promise.resolve('');
+  if(isDataUrl(ref) || isHttpUrl(ref)) return Promise.resolve(ref);
+  if(isIdbRef(ref)){
+    if(photoCache[ref]) return Promise.resolve(photoCache[ref]);
+    return idbGet(ref.slice(4)).then(function(d){ if(d) photoCache[ref] = d; return d || ''; });
+  }
+  return Promise.resolve(ref);
+}
+/* 渲染后把 <img data-photo="引用"> 批量填充为真实图片 */
+function hydratePhotos(root){
+  var nodes = (root || document).querySelectorAll('img[data-photo]');
+  if(!nodes.length) return;
+  var keys = [], pending = [];
+  Array.prototype.forEach.call(nodes, function(img){
+    var ref = img.getAttribute('data-photo') || '';
+    if(!ref) return;
+    if(isDataUrl(ref) || isHttpUrl(ref)){ img.src = ref; return; }
+    if(photoCache[ref]){ img.src = photoCache[ref]; return; }
+    if(isIdbRef(ref)){ keys.push(ref.slice(4)); pending.push(img); }
+  });
+  if(!keys.length) return;
+  idbGetMany(keys).then(function(map){
+    Object.keys(map).forEach(function(k){ photoCache[k] = map[k]; });
+    Array.prototype.forEach.call(nodes, function(img){
+      var ref = img.getAttribute('data-photo') || '';
+      if(photoCache[ref]) img.src = photoCache[ref];
+    });
+  });
+}
+
+/* ---- 旧数据迁移：把 localStorage 里已有的 base64 照片搬到 IndexedDB/Storage ---- */
+function migratePhotosOutOfStorage(){
+  if(!state.recipeRecords || !state.recipeRecords.length) return Promise.resolve(false);
+  var jobs = [];
+  state.recipeRecords.forEach(function(r){
+    var ps = recordPhotos(r);
+    if(!ps.length) return;
+    var need = ps.some(function(p){ return isDataUrl(p) && p.length > 2000; });
+    if(!need) return;
+    jobs.push(storePhotos(ps).then(function(list){
+      r.photos = list;
+      r.photo = list[0] || '';
+      return true;
+    }));
+  });
+  if(!jobs.length) return Promise.resolve(false);
+  return Promise.all(jobs).then(function(){ return true; });
+}
+
 var suppressBroadcast = false;
 function saveState(){
   try{
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }catch(e){
-    alert('保存失败：本机存储空间可能已满（照片较占空间），请删除一些旧照片记录后重试。');
+    alert('保存失败：浏览器本地存储写不下了。建议到「设置 → 数据管理」先导出备份，然后清理部分旧照片记录再试。');
     return;
   }
   syncSave();
@@ -1303,7 +1466,7 @@ function renderDayRecords(){
       var show = ps.slice(0,2);          // 列表里最多展示 2 个缩略图，第 2 个叠加「+N」
       thumbs = '<div class="dr-thumbs">'+show.map(function(p,i){
         var extra = (i===1 && ps.length>2) ? '<span class="dr-thumb-more">+'+(ps.length-1)+'</span>' : '';
-        return '<button class="dr-thumb" data-lb="'+r.id+'" data-i="'+i+'" title="点击看大图"><img src="'+p+'">'+extra+'</button>';
+        return '<button class="dr-thumb" data-lb="'+r.id+'" data-i="'+i+'" title="点击看大图"><img data-photo="'+p+'" src="">'+extra+'</button>';
       }).join('')+'</div>';
     }
     return '<div class="day-record-item">'+
@@ -1330,6 +1493,7 @@ function renderDayRecords(){
       openLightbox(recordPhotos(rec), parseInt(btn.getAttribute('data-i'),10)||0, rec);
     });
   });
+  hydratePhotos(box);
 }
 
 /* ===== 大图浏览灯箱 ===== */
@@ -1344,7 +1508,10 @@ function openLightbox(list, idx, rec){
 }
 function closeLightbox(){ document.getElementById('modalLightbox').classList.remove('show'); }
 function renderLightbox(){
-  document.getElementById('lbImg').src = lbState.list[lbState.idx] || '';
+  var ref = lbState.list[lbState.idx] || '';
+  var imgEl = document.getElementById('lbImg');
+  if(isDataUrl(ref) || isHttpUrl(ref)){ imgEl.src = ref; }
+  else { imgEl.src = ''; resolvePhoto(ref).then(function(s){ if(s) imgEl.src = s; }); }
   document.getElementById('lbCount').textContent = (lbState.idx+1)+' / '+lbState.list.length;
   document.getElementById('lbMeta').textContent = lbState.meta || '';
   document.getElementById('lbPrev').disabled = (lbState.idx<=0);
@@ -1441,16 +1608,27 @@ document.getElementById('recSaveBtn').addEventListener('click', function(){
   var type = document.getElementById('recTypeSeg').querySelector('.active').getAttribute('data-v');
   var note = document.getElementById('recNote').value.trim();
   var photos = recordPhotoList.slice(0, MAX_REC_PHOTOS);
-  state.recipeRecords.push({
-    id:uid('r'), date:date, type:type, note:note,
-    photos: photos, photo: photos[0] || '',   // photo 保留一份，兼容旧版本读取
-    userId: state.currentUserId, ts: Date.now(), updatedAt: Date.now()
+  var btn = this;
+  var oldText = btn.textContent;
+  btn.disabled = true;
+  if(photos.length) btn.textContent = '正在保存照片…';
+  // 照片先外置到 Storage/IndexedDB，state 里只留引用，避免撑爆 localStorage
+  storePhotos(photos).then(function(list){
+    state.recipeRecords.push({
+      id:uid('r'), date:date, type:type, note:note,
+      photos: list, photo: list[0] || '',   // photo 保留一份，兼容旧版本读取
+      userId: state.currentUserId, ts: Date.now(), updatedAt: Date.now()
+    });
+    saveState(); closeModal('modalRecord');
+    btn.disabled = false; btn.textContent = oldText;
+    calState.selected = date;
+    var y=parseInt(date.slice(0,4),10), m=parseInt(date.slice(5,7),10)-1;
+    calState.year=y; calState.month=m;
+    renderCalendar(); renderDayRecords();
+  }).catch(function(){
+    btn.disabled = false; btn.textContent = oldText;
+    alert('照片保存失败，请重试。');
   });
-  saveState(); closeModal('modalRecord');
-  calState.selected = date;
-  var y=parseInt(date.slice(0,4),10), m=parseInt(date.slice(5,7),10)-1;
-  calState.year=y; calState.month=m;
-  renderCalendar(); renderDayRecords();
 });
 
 function compressImage(file, maxW, quality){
@@ -1893,6 +2071,13 @@ function init(){
   renderAll();
   renderDeco();
   setupPWA();
+  /* 旧版本把照片 base64 存在 localStorage 里极易写满，首次启动迁移到 IndexedDB/Storage
+     （延后 1.5s 执行，避开首次云端同步，避免迁移结果被覆盖） */
+  setTimeout(function(){
+    migratePhotosOutOfStorage().then(function(changed){
+      if(changed){ saveState(); renderAll(); }
+    });
+  }, 1500);
   if(syncEnabled){
     if(getFamilyCode()){
       syncLoad(function(){ renderAll(); subscribeRealtime(); });
