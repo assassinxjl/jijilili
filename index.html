@@ -524,12 +524,18 @@
     <input class="field-input" id="apiModel" placeholder="gpt-3.5-turbo">
     <div class="field-label">代理地址（可选，解决跨域）</div>
     <input class="field-input" id="apiProxy" placeholder="https://xxx.workers.dev/  或留空走 Supabase 代理">
-    <div class="field-label">🖼️ 图片代理地址（可选，解决换网络照片看不到）</div>
+    <div class="field-label">🖼️ 图片代理地址（可选，多个用逗号分隔）</div>
     <input class="field-input" id="photoProxy" placeholder="https://jijilili-photo.xxx.workers.dev">
     <div class="mini-hint" style="margin-top:6px;color:var(--text-light);">
-      照片存在 Supabase，部分网络下该域名连不上会导致照片空白。填入 Cloudflare Worker 图片代理地址后，
-      照片改走代理加载（更稳）；加载失败会自动回退直连，再失败则用本机副本。每台设备各填一次。
+      照片原图存在 Supabase，部分网络连不上该域名会显示不出来。现在每张照片会额外同步一张小缩略图，
+      <b>只要数据能同步就一定能看到图</b>；网络好时再自动换成高清。填入图片代理后，高清图改走代理加载（更快更稳），
+      失败会自动回退直连 → 本机副本。该地址会随家庭数据同步，填一次全家生效。
     </div>
+    <div class="modal-actions" style="margin-top:8px;">
+      <button class="btn btn-ghost" id="photoTestBtn">🔍 图片自检</button>
+      <button class="btn btn-ghost" id="thumbRebuildBtn">🧩 补建缩略图</button>
+    </div>
+    <div class="mini-hint" id="photoTestOut" style="margin-top:6px;color:var(--text-light);white-space:pre-wrap;"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modalApi')">取消</button>
       <button class="btn btn-primary" id="apiSaveBtn">保存设置</button>
@@ -795,6 +801,8 @@ function normalizeState(){
   }
   if(!state.todos) state.todos = [];
   if(!state.customNotes) state.customNotes = {};
+  if(!state.photoThumbs || typeof state.photoThumbs !== 'object') state.photoThumbs = {};
+  if(typeof state.photoProxy !== 'string') state.photoProxy = (state.apiConfig && state.apiConfig.photoProxy) || '';
   /* 同步用墓碑：记录已删除条目的 id，便于跨设备传播「删除」 */
   if(!state._del) state._del = {};
   ['chilled','frozen','recipeRecords','todos','users'].forEach(function(t){ if(!state._del[t]) state._del[t]={}; });
@@ -961,11 +969,16 @@ function dataUrlToBlob(dataUrl){
   for(var i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
   return new Blob([arr], { type: mime });
 }
+function photoName(){
+  var code = (getFamilyCode() || 'public').replace(/[^a-zA-Z0-9_-]/g,'') || 'public';
+  return code + '/' + Date.now().toString(36) + Math.random().toString(36).slice(2,8) + '.jpg';
+}
 function sbUploadPhoto(dataUrl){
   if(!syncEnabled) return Promise.reject(new Error('no-sync'));
-  var code = (getFamilyCode() || 'public').replace(/[^a-zA-Z0-9_-]/g,'');
-  var name = code + '/' + Date.now().toString(36) + Math.random().toString(36).slice(2,8) + '.jpg';
+  var name = photoName();
   var base = (SUPABASE_URL || '').replace(/\/+$/,'');
+  function publicUrl(){ return base + '/storage/v1/object/public/' + PHOTO_BUCKET + '/' + name; }
+  // 1) 直连 Supabase Storage
   return fetch(base + '/storage/v1/object/' + PHOTO_BUCKET + '/' + name, {
     method: 'POST',
     headers: {
@@ -975,26 +988,87 @@ function sbUploadPhoto(dataUrl){
     body: dataUrlToBlob(dataUrl)
   }).then(function(r){
     if(!r.ok) throw new Error('upload-failed');
-    return base + '/storage/v1/object/public/' + PHOTO_BUCKET + '/' + name;
+    return publicUrl();
+  }).catch(function(){
+    // 2) 直连不通（换网络后常见）→ 改走图片代理上传（代理端携带 anon key 回源）
+    var ps = proxyList();
+    if(!ps.length) throw new Error('upload-failed');
+    return fetch(ps[0] + '/' + PHOTO_BUCKET + '/' + name, {
+      method: 'POST',
+      headers: { 'Content-Type': 'image/jpeg', 'x-upsert': 'true' },
+      body: dataUrlToBlob(dataUrl)
+    }).then(function(r){
+      if(!r.ok) throw new Error('proxy-upload-failed');
+      return publicUrl();
+    });
   });
 }
+
+/* ---- 缩略图：跟着数据一起同步 ----
+   原图放在 Supabase Storage，而 supabase.co 在部分网络（尤其手机流量/公司网）连不上，
+   于是别的设备只能看到裂图。解决办法：每张照片额外生成一张约 10KB 的小缩略图，
+   随 state 一起同步。只要设备能同步到数据，就一定能先看到缩略图；网络好时再换成高清原图。 */
+var THUMB_MAX = 240;        // 缩略图最长边
+var THUMB_QUALITY = 0.5;
+var THUMB_LIMIT = 150;      // 最多保留多少张缩略图（防止本地存储膨胀）
+function makeThumb(dataUrl){
+  return new Promise(function(resolve){
+    if(!isDataUrl(dataUrl)) return resolve('');
+    var img = new Image();
+    img.onload = function(){
+      try{
+        var w=img.width, h=img.height, m=Math.max(w,h);
+        var s = m > THUMB_MAX ? THUMB_MAX/m : 1;
+        w = Math.max(1, Math.round(w*s)); h = Math.max(1, Math.round(h*s));
+        var c = document.createElement('canvas');
+        c.width=w; c.height=h;
+        c.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(c.toDataURL('image/jpeg', THUMB_QUALITY));
+      }catch(e){ resolve(''); }
+    };
+    img.onerror = function(){ resolve(''); };
+    img.src = dataUrl;
+  });
+}
+var _thumbDirty = false, _thumbTimer = null;
+function noteThumb(ref, thumb){
+  if(!ref || !thumb || !isDataUrl(thumb)) return;
+  if(!state.photoThumbs) state.photoThumbs = {};
+  if(state.photoThumbs[ref] === thumb) return;
+  state.photoThumbs[ref] = thumb;
+  var ks = Object.keys(state.photoThumbs);
+  if(ks.length > THUMB_LIMIT){   // 超限：丢掉最早写入的一半
+    ks.slice(0, Math.ceil(ks.length/2)).forEach(function(k){ delete state.photoThumbs[k]; });
+  }
+  _thumbDirty = true;
+  if(_thumbTimer) return;
+  _thumbTimer = setTimeout(function(){        // 批量补齐后统一存一次，避免频繁写盘
+    _thumbTimer = null;
+    if(!_thumbDirty) return;
+    _thumbDirty = false;
+    saveState();
+  }, 1500);
+}
+function thumbOf(ref){ return (state && state.photoThumbs && isDataUrl(state.photoThumbs[ref])) ? state.photoThumbs[ref] : ''; }
 
 /* ---- 统一入口：dataUrl -> 引用 ---- */
 function storePhoto(p){
   if(!p) return Promise.resolve('');
   if(isHttpUrl(p) || isIdbRef(p)) return Promise.resolve(p);   // 已经是引用
   if(!isDataUrl(p)) return Promise.resolve(p);
-  function toIdb(){
-    return idbPut(p).catch(function(){ return p; });   // 极端情况仍退回 base64
+  function toIdb(){ return idbPut(p).catch(function(){ return p; }); }
+  function withThumb(ref){
+    if(!ref || !isHttpUrl(ref) && !isIdbRef(ref)) return ref;
+    return makeThumb(p).then(function(t){ if(t) noteThumb(ref, t); return ref; });
   }
-  if(_sbPhotoOk === false) return toIdb();
+  if(_sbPhotoOk === false) return toIdb().then(withThumb);
   return sbUploadPhoto(p).then(function(url){
     _sbPhotoOk = true;
     cachePhotoLocally(url, p);   // 同时在本机留一份副本，换网络/断网也能显示
-    return url;
+    return withThumb(url);
   }).catch(function(){
     _sbPhotoOk = false;
-    return toIdb();
+    return toIdb().then(withThumb);
   });
 }
 function storePhotos(list){ return Promise.all((list || []).map(storePhoto)); }
@@ -1012,18 +1086,46 @@ function resolvePhoto(ref){
 /* ---- 图片加载：代理优先 → 直连兜底 → 本机副本 ----
    部分网络连不上 supabase.co，导致照片只有上传时那个 WiFi 能看。
    这里三级降级：先走 Cloudflare 代理，再直连，最后用上传时存在本机 IndexedDB 的副本。 */
-function photoProxyUrl(){
+var PHOTO_TIMEOUT = 6000;                 // 单个通道等待上限：连不上的域名常常既不成功也不报错，只能靠超时切换
+var PHOTO_CHAN_KEY = 'jjll_photo_chan';   // 记住上次成功的通道，避免每张图都干等超时
+var PHOTO_BROKEN = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120">' +
+  '<rect width="160" height="120" fill="#F3ECE6"/>' +
+  '<text x="80" y="62" font-size="15" fill="#9C8879" text-anchor="middle" font-family="sans-serif">图片暂不可用</text>' +
+  '<text x="80" y="84" font-size="12" fill="#BCAEA2" text-anchor="middle" font-family="sans-serif">点击重试</text></svg>');
+var PHOTO_BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';  // 1x1 透明图：加载中占位，避免出现裂图图标
+function photoChan(){ try{ return localStorage.getItem(PHOTO_CHAN_KEY) || ''; }catch(e){ return ''; } }
+function rememberChan(c){ try{ localStorage.setItem(PHOTO_CHAN_KEY, c); }catch(e){} }
+/* 代理地址来源：本机设置 → 云端同步下来的设置 → 代码内置默认；支持逗号/换行分隔多个，依次尝试 */
+function proxyList(){
   var cfg = (typeof state !== 'undefined' && state && state.apiConfig) || {};
-  var v = (cfg.photoProxy || '').trim();
-  if(v) return v.replace(/\/+$/, '');
-  return PHOTO_PROXY_DEFAULT ? String(PHOTO_PROXY_DEFAULT).replace(/\/+$/, '') : '';
+  var raw = [cfg.photoProxy, (typeof state !== 'undefined' && state ? state.photoProxy : ''), PHOTO_PROXY_DEFAULT].join(',');
+  var out = [];
+  String(raw || '').split(/[,\s]+/).forEach(function(s){
+    s = String(s || '').trim().replace(/\/+$/, '');
+    if(s && out.indexOf(s) < 0) out.push(s);
+  });
+  return out;
+}
+function photoProxyUrl(){
+  var ps = proxyList();
+  return ps.length ? ps[0] : '';
 }
 function viaProxy(url){
-  var p = photoProxyUrl();
-  if(!p) return url;
+  var ps = proxyList();
+  if(!ps.length) return url;
   var m = String(url).match(/\/storage\/v1\/object\/public\/(.+)$/);
   if(!m) return url;
-  return p.replace(/\/+$/, '') + '/' + m[1];
+  return ps[0] + '/' + m[1];
+}
+/* 候选通道列表：代理（可多个）与直连；上次哪个成功就排前面 */
+function buildCandidates(ref){
+  if(!isHttpUrl(ref)) return [];
+  var m = String(ref).match(/\/storage\/v1\/object\/public\/(.+)$/);
+  var tail = m ? m[1] : '';
+  var proxies = proxyList().map(function(p){ return { k:'proxy', url: tail ? (p + '/' + tail) : ref }; });
+  var direct = [{ k:'direct', url: ref }];
+  return (photoChan() === 'direct') ? direct.concat(proxies) : proxies.concat(direct);
 }
 /* 本机副本：以图片 URL 为 key 存一份 base64，断网/换网络时兜底 */
 function cachePhotoLocally(url, dataUrl){
@@ -1064,43 +1166,70 @@ function ensureLocalCopy(url){
         fr.readAsDataURL(b);
       });
     })
-    .then(function(d){ if(d && d.length > 1000) cachePhotoLocally(url, d); })
+    .then(function(d){
+      if(!d || d.length <= 1000) return;
+      cachePhotoLocally(url, d);
+      // 顺手补一张缩略图：这样这台设备看过的照片，其它设备同步后也能显示
+      if(!thumbOf(url)) return makeThumb(d).then(function(t){ if(t) noteThumb(url, t); });
+    })
     .catch(function(){});
 }
 
-/* 给一张图片绑定多级回退：代理 → 直连 → 本机副本 */
+/* 给一张图片绑定加载逻辑：
+   先立刻显示随数据同步过来的缩略图（任何网络都看得到，不会裂图），
+   再在后台依次尝试「图片代理 → 直连」（带超时，连不上的域名不会无限转圈），
+   都不通就用本机 IndexedDB 副本，最后才给一个可点击重试的占位图。 */
 function bindPhotoFallback(img, ref){
-  // 同一元素可能被重复调用（灯箱左右切换），先解绑上一次的处理器，避免回退链被污染
-  if(img._photoFail){
-    try{ img.removeEventListener('error', img._photoFail); }catch(e){}
-    img._photoFail = null;
+  // 同一元素可能被重复调用（灯箱左右切换），先中止上一次的加载链
+  if(img._photoAbort){ try{ img._photoAbort(); }catch(e){} img._photoAbort = null; }
+  var thumb = thumbOf(ref);
+  if(thumb){ img.src = thumb; }
+  else if(!img.getAttribute('src')){ img.src = PHOTO_BLANK; }   // 加载中先占位，别显示裂图
+
+  if(isDataUrl(ref)){ if(img.src !== ref) img.src = ref; return; }
+  if(!isHttpUrl(ref)){                       // idb: 引用 → 取本机大图
+    resolvePhoto(ref).then(function(s){ if(s) img.src = s; });
+    return;
   }
-  var cands = [];
-  if(isDataUrl(ref)){
-    cands.push(ref);
-  }else if(isHttpUrl(ref)){
-    var proxied = viaProxy(ref);
-    if(proxied !== ref) cands.push(proxied);
-    cands.push(ref);
+
+  var cands = buildCandidates(ref);
+  var i = 0, done = false, timer = null;
+  function cleanup(){ done = true; if(timer){ clearTimeout(timer); timer = null; } img._photoAbort = null; }
+  function giveUp(){
+    if(done) return;
+    done = true; img._photoAbort = null;
+    img.src = PHOTO_BROKEN;
+    img.onclick = function(){ img.onclick = null; bindPhotoFallback(img, ref); };
   }
-  if(!cands.length) return;
-  var i = 0;
-  function onFail(){
-    i++;
-    if(i < cands.length){ img.src = cands[i]; return; }
-    try{ img.removeEventListener('error', onFail); }catch(e){}
-    img._photoFail = null;
-    if(isHttpUrl(ref)){
-      getLocalCopy(ref).then(function(d){ if(d) img.src = d; });
+  function finish(url, chan){
+    if(done || !url) return;
+    cleanup();
+    if(chan) rememberChan(chan);
+    if(img.src !== url) img.src = url;
+    ensureLocalCopy(url);                    // 显示成功后补一份本机副本 + 缩略图
+  }
+  function tryNext(){
+    if(done) return;
+    if(timer){ clearTimeout(timer); timer = null; }
+    if(i >= cands.length){                   // 网络全不通：退回本机副本
+      getLocalCopy(ref).then(function(d){
+        if(done) return;
+        done = true; img._photoAbort = null;
+        if(d) img.src = d; else if(!thumb) giveUp();
+      });
+      return;
     }
+    var c = cands[i++], probe = new Image(), settled = false;
+    timer = setTimeout(function(){
+      if(settled || done) return;
+      settled = true; probe.src = ''; tryNext();
+    }, PHOTO_TIMEOUT);
+    probe.onload  = function(){ if(settled || done) return; settled = true; finish(c.url, c.k); };
+    probe.onerror = function(){ if(settled || done) return; settled = true; tryNext(); };
+    probe.src = c.url;
   }
-  img._photoFail = onFail;
-  img.addEventListener('error', onFail);
-  img.addEventListener('load', function onOk(){
-    try{ img.removeEventListener('load', onOk); }catch(e){}
-    if(isHttpUrl(ref)) ensureLocalCopy(ref);   // 显示成功后补一份本机副本
-  });
-  img.src = cands[0];
+  img._photoAbort = cleanup;
+  tryNext();
 }
 
 /* 渲染后把 <img data-photo="引用"> 批量填充为真实图片 */
@@ -1113,6 +1242,8 @@ function hydratePhotos(root){
     if(!ref) return;
     if(isDataUrl(ref)){ img.src = ref; return; }
     if(isHttpUrl(ref)){ bindPhotoFallback(img, ref); return; }
+    var t0 = thumbOf(ref);
+    if(t0){ img.src = t0; return; }
     if(photoCache[ref]){ img.src = photoCache[ref]; return; }
     if(isIdbRef(ref)) keys.push(ref.slice(4));
   });
@@ -1771,7 +1902,7 @@ function openApiModal(){
   document.getElementById('apiModel').value = state.apiConfig.model||'gpt-3.5-turbo';
   document.getElementById('apiProxy').value = state.apiConfig.proxyUrl||'';
   var ppEl = document.getElementById('photoProxy');
-  if(ppEl) ppEl.value = state.apiConfig.photoProxy||'';
+  if(ppEl) ppEl.value = state.apiConfig.photoProxy || state.photoProxy || '';
   openModal('modalApi');
 }
 document.getElementById('apiSaveBtn').addEventListener('click', function(){
@@ -1782,8 +1913,114 @@ document.getElementById('apiSaveBtn').addEventListener('click', function(){
     proxyUrl: document.getElementById('apiProxy').value.trim(),
     photoProxy: (document.getElementById('photoProxy') || {}).value ? document.getElementById('photoProxy').value.trim() : ''
   };
+  state.photoProxy = state.apiConfig.photoProxy;   // 随家庭数据同步，填一次其它设备自动生效
   saveState(); closeModal('modalApi');
 });
+
+/* ---- 图片自检：逐个通道试加载一张真实照片，直接告诉你哪个通 ---- */
+function photoSelfTest(){
+  var out = document.getElementById('photoTestOut');
+  var ref = '';
+  (state.recipeRecords || []).forEach(function(r){
+    (r.photos || []).forEach(function(p){ if(!ref && isHttpUrl(p)) ref = p; });
+  });
+  if(!ref){
+    if(out) out.textContent = '没有找到云端照片，无法自检。请先在有网的设备上上传一张照片。';
+    return;
+  }
+  var cands = buildCandidates(ref);
+  if(!cands.length){ if(out) out.textContent = '候选通道为空。'; return; }
+  var lines = ['共 ' + cands.length + ' 个通道，逐个测试…'];
+  if(out) out.textContent = lines.join('\n');
+  var i = 0;
+  function flush(){ if(out) out.textContent = lines.join('\n'); }
+  function step(){
+    if(i >= cands.length){
+      lines.push('缩略图：' + (thumbOf(ref) ? '已有 ✓（这台设备一定能显示）' : '缺失 ✗（可点「补建缩略图」）'));
+      flush();
+      return;
+    }
+    var c = cands[i++], t0 = Date.now(), probe = new Image(), done = false;
+    var label = (c.k === 'proxy' ? '代理' : '直连');
+    var to = setTimeout(function(){
+      if(done) return; done = true;
+      lines.push(label + '：超时 ✗（>6s 无响应，多半是该域名在这个网络下不可达）');
+      flush(); step();
+    }, 6000);
+    probe.onload  = function(){ if(done) return; done = true; clearTimeout(to); lines.push(label+'：成功 ✓  '+((Date.now()-t0)/1000).toFixed(1)+'s'); flush(); step(); };
+    probe.onerror = function(){ if(done) return; done = true; clearTimeout(to); lines.push(label+'：失败 ✗（地址错误或服务器拒绝）'); flush(); step(); };
+    probe.src = c.url;
+  }
+  step();
+}
+document.getElementById('photoTestBtn').addEventListener('click', photoSelfTest);
+
+/* ---- 补建缩略图：给还没有缩略图的老照片补一张，补完同步给其它设备 ---- */
+function fetchImageData(url){
+  return fetch(url, { mode:'cors', cache:'force-cache' })
+    .then(function(r){ return r.blob(); })
+    .then(function(b){
+      return new Promise(function(res, rej){
+        var fr = new FileReader();
+        fr.onload = function(){ res(fr.result); };
+        fr.onerror = rej;
+        fr.readAsDataURL(b);
+      });
+    }).catch(function(){ return ''; });
+}
+function rebuildThumbs(){
+  var out = document.getElementById('photoTestOut');
+  var refs = [];
+  (state.recipeRecords || []).forEach(function(r){
+    (r.photos || []).forEach(function(p){ if(p && refs.indexOf(p) < 0) refs.push(p); });
+  });
+  var todo = refs.filter(function(r){ return (isHttpUrl(r) || isIdbRef(r)) && !thumbOf(r); });
+  if(!todo.length){ if(out) out.textContent = '所有照片都已有缩略图 ✓'; return; }
+  var done = 0, ok = 0;
+  function flush(){ if(out) out.textContent = '补建中… ' + done + '/' + todo.length + '（成功 ' + ok + '）'; }
+  flush();
+  todo.forEach(function(ref){
+    var src = isIdbRef(ref) ? idbGet(ref.slice(4))
+                            : getLocalCopy(ref).then(function(d){ return d || fetchImageData(ref); });
+    src.then(function(d){
+      if(!d) return;
+      return makeThumb(d).then(function(t){ if(t){ noteThumb(ref, t); ok++; } });
+    }).then(function(){
+      done++; flush();
+      if(done >= todo.length){
+        if(out) out.textContent = '补建完成：' + ok + '/' + todo.length + ' 张已生成缩略图，正在同步给其它设备…';
+        if(ok) saveState();
+      }
+    }, function(){
+      done++; flush();
+      if(done >= todo.length && ok) saveState();
+    });
+  });
+}
+document.getElementById('thumbRebuildBtn').addEventListener('click', rebuildThumbs);
+
+/* 静默版补建：本机只要能加载出原图就补缩略图并同步出去，
+   于是「这台设备看得到 → 换台设备也看得到」，不必手工操作。串行执行，不抢带宽。 */
+function autoRebuildThumbs(limit){
+  var refs = [];
+  (state.recipeRecords || []).forEach(function(r){
+    (r.photos || []).forEach(function(p){
+      if((isHttpUrl(p) || isIdbRef(p)) && !thumbOf(p) && refs.indexOf(p) < 0) refs.push(p);
+    });
+  });
+  refs = refs.slice(0, limit || 30);
+  var idx = 0;
+  function next(){
+    if(idx >= refs.length) return;
+    var ref = refs[idx++];
+    var src = isIdbRef(ref) ? idbGet(ref.slice(4))
+                            : getLocalCopy(ref).then(function(d){ return d || fetchImageData(ref); });
+    src.then(function(d){
+      if(d) return makeThumb(d).then(function(t){ if(t) noteThumb(ref, t); });
+    }).then(next, next);
+  }
+  next();
+}
 
 var lastAiText = '';           // 保留上一次推荐结果，重新渲染/云同步刷新后不丢失
 function setAiText(txt){
@@ -2195,6 +2432,11 @@ function init(){
       if(changed){ saveState(); renderAll(); }
     });
   }, 1500);
+  /* 历史照片没有缩略图时，换网络就会裂图。本机只要能加载出原图就静默补一张并同步出去，
+     这样在能上网的设备上打开一次，其它设备（手机）同步后就能看到了。 */
+  setTimeout(function(){
+    if(state && state.recipeRecords && state.recipeRecords.length) autoRebuildThumbs(30);
+  }, 5000);
   if(syncEnabled){
     if(getFamilyCode()){
       syncLoad(function(){ renderAll(); subscribeRealtime(); });

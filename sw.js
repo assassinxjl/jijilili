@@ -1,7 +1,7 @@
 // 吉吉利利 离线缓存 Service Worker
 // v4：修复「手机快捷方式打开显示旧内容」——HTML 页面在线时强制走网络（永不缓存旧壳），
 //     仅静态资源（图标/清单）走缓存以保证离线可用；缓存名升级以清掉旧缓存。
-const CACHE = 'jjll-v4';
+const CACHE = 'jjll-v5';
 const ASSETS = [
   './',
   './index.html',
