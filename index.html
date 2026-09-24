@@ -2146,7 +2146,26 @@ function rebuildThumbs(){
 document.getElementById('thumbRebuildBtn').addEventListener('click', rebuildThumbs);
 
 /* ---- 迁移照片到国内云：把引用从 supabase / 本机 换成 OSS ----
-   数据源优先级：本机原图副本 → IndexedDB 原图 → 缩略图（画质降级但至少能显示） */
+   取图优先级（越靠前画质越好）：
+     1) 本机 IndexedDB 原图副本   2) 趁网络能连通，直接从原地址把原图拉下来
+     3) 走图片代理拉原图          4) 缩略图（最后一档，画质降级但至少能显示） */
+function photoSourceData(ref){
+  if(isIdbRef(ref)) return idbGet(ref.slice(4));
+  if(!isHttpUrl(ref)) return Promise.resolve(ref);          // dataUrl 直接用
+  return getLocalCopy(ref).then(function(d){
+    if(d) return d;
+    return fetchImageData(ref).then(function(x){
+      if(x) return x;
+      var px = viaProxy(ref);
+      if(px !== ref) return fetchImageData(px);
+      return '';
+    });
+  }).then(function(d){
+    if(d) return d;
+    var th = thumbOf(ref);                                   // 实在拿不到原图，退回缩略图
+    return th || '';
+  });
+}
 function migratePhotosToCloud(){
   var out = document.getElementById('photoTestOut');
   if(!useOss()){
@@ -2160,24 +2179,25 @@ function migratePhotosToCloud(){
   });
   var todo = refs.filter(function(r){ return !isOssRef(r); });
   if(!todo.length){ if(out) out.textContent = '所有照片都已在国內云上 ✓'; return; }
-  var done = 0, ok = 0, fail = 0;
-  function flush(){ if(out) out.textContent = '迁移中… ' + done + '/' + todo.length + '（成功 ' + ok + '，失败 ' + fail + '）'; }
-  function tick(success){
-    if(success) ok++; else fail++;
-    done++; flush();
-    if(done >= todo.length){
-      if(out) out.textContent = '迁移完成：成功 ' + ok + ' 张，失败 ' + fail + ' 张。' + (ok ? '已写入本地，正在同步到云端…' : '');
-      if(ok) saveState();
-    }
-  }
+  var done = 0, ok = 0, fail = 0, lowQ = 0;
+  function flush(){ if(out) out.textContent = '迁移中… ' + done + '/' + todo.length + '（成功 ' + ok + '，降级 ' + lowQ + '，失败 ' + fail + '）'; }
   flush();
-  todo.forEach(function(ref){
-    var src;
-    if(isHttpUrl(ref)) src = getLocalCopy(ref);
-    else if(isIdbRef(ref)) src = idbGet(ref.slice(4));
-    else src = Promise.resolve(ref);
-    src.then(function(d){
-      if(!d || !isDataUrl(d)) return Promise.reject(new Error('no-data'));
+  /* 串行处理：一张拉完再下一张，避免几十张图并发把网络/函数压垮 */
+  var idx = 0;
+  function step(){
+    if(idx >= todo.length){
+      var msg = '迁移完成：成功 ' + ok + ' 张';
+      if(lowQ) msg += '（其中 ' + lowQ + ' 张只有缩略图，画质较低）';
+      if(fail) msg += '，失败 ' + fail + ' 张';
+      msg += '。' + (ok ? '已写入本地，正在同步到云端…' : '');
+      if(out) out.textContent = msg;
+      if(ok) saveState();
+      return;
+    }
+    var ref = todo[idx++];
+    photoSourceData(ref).then(function(d){
+      if(d && isDataUrl(d) && d === thumbOf(ref)) lowQ++;   // 只剩缩略图可用，属降级迁移
+      if(!d || !isDataUrl(d)) throw new Error('no-data');
       return ossUploadPhoto(d).then(function(url){
         var th = thumbOf(ref);
         (state.recipeRecords || []).forEach(function(r){
@@ -2189,8 +2209,13 @@ function migratePhotosToCloud(){
         if(th) noteThumb(url, th);
         cachePhotoLocally(url, d);
       });
-    }).then(function(){ tick(true); }, function(){ tick(false); });
-  });
+    }).then(function(){
+      ok++; done++; flush(); step();
+    }, function(){
+      fail++; done++; flush(); step();
+    });
+  }
+  step();
 }
 document.getElementById('cloudMigrateBtn').addEventListener('click', function(){
   ossLoadInfo().then(migratePhotosToCloud);
