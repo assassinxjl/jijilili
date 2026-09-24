@@ -524,6 +524,12 @@
     <input class="field-input" id="apiModel" placeholder="gpt-3.5-turbo">
     <div class="field-label">代理地址（可选，解决跨域）</div>
     <input class="field-input" id="apiProxy" placeholder="https://xxx.workers.dev/  或留空走 Supabase 代理">
+    <div class="field-label">🖼️ 图片代理地址（可选，解决换网络照片看不到）</div>
+    <input class="field-input" id="photoProxy" placeholder="https://jijilili-photo.xxx.workers.dev">
+    <div class="mini-hint" style="margin-top:6px;color:var(--text-light);">
+      照片存在 Supabase，部分网络下该域名连不上会导致照片空白。填入 Cloudflare Worker 图片代理地址后，
+      照片改走代理加载（更稳）；加载失败会自动回退直连，再失败则用本机副本。每台设备各填一次。
+    </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modalApi')">取消</button>
       <button class="btn btn-primary" id="apiSaveBtn">保存设置</button>
@@ -752,7 +758,7 @@ function defaultState(){
     fridge:{ chilled:[], frozen:[] },
     recipeRecords:[],
     recipeIdeas:'',
-    apiConfig:{endpoint:'', key:'', model:'gpt-3.5-turbo', proxyUrl:''},
+    apiConfig:{endpoint:'', key:'', model:'gpt-3.5-turbo', proxyUrl:'', photoProxy:''},
     todos:[],
     customNotes:{},
     _del:{chilled:{},frozen:{},todos:{},recipeRecords:{},users:{}}
@@ -782,8 +788,11 @@ function normalizeState(){
   if(!state.fridge) state.fridge = {chilled:[],frozen:[]};
   if(!state.recipeRecords) state.recipeRecords = [];
   if(typeof state.recipeIdeas !== 'string') state.recipeIdeas = '';
-  if(!state.apiConfig) state.apiConfig = {endpoint:'',key:'',model:'gpt-3.5-turbo',proxyUrl:''};
-  else if(!('proxyUrl' in state.apiConfig)) state.apiConfig.proxyUrl = '';
+  if(!state.apiConfig) state.apiConfig = {endpoint:'',key:'',model:'gpt-3.5-turbo',proxyUrl:'',photoProxy:''};
+  else{
+    if(!('proxyUrl' in state.apiConfig)) state.apiConfig.proxyUrl = '';
+    if(!('photoProxy' in state.apiConfig)) state.apiConfig.photoProxy = '';
+  }
   if(!state.todos) state.todos = [];
   if(!state.customNotes) state.customNotes = {};
   /* 同步用墓碑：记录已删除条目的 id，便于跨设备传播「删除」 */
@@ -882,6 +891,9 @@ function mergeState(local, remote){
    这样 localStorage 与云端同步的数据都只剩引用，不再被照片撑爆。
 =================================== */
 var PHOTO_BUCKET = 'photos';
+/* 可选：把图片代理地址直接写死在这里（如 'https://jijilili-photo.xxx.workers.dev'），
+   这样所有设备都生效，不必逐台去设置里填。留空则只认「设置 → 图片代理地址」。 */
+var PHOTO_PROXY_DEFAULT = '';
 var photoCache = Object.create(null);   // 引用 -> 可直接显示的 src
 var _sbPhotoOk = null;                  // null=未知 true=Storage可用 false=已降级
 
@@ -978,6 +990,7 @@ function storePhoto(p){
   if(_sbPhotoOk === false) return toIdb();
   return sbUploadPhoto(p).then(function(url){
     _sbPhotoOk = true;
+    cachePhotoLocally(url, p);   // 同时在本机留一份副本，换网络/断网也能显示
     return url;
   }).catch(function(){
     _sbPhotoOk = false;
@@ -996,17 +1009,112 @@ function resolvePhoto(ref){
   }
   return Promise.resolve(ref);
 }
+/* ---- 图片加载：代理优先 → 直连兜底 → 本机副本 ----
+   部分网络连不上 supabase.co，导致照片只有上传时那个 WiFi 能看。
+   这里三级降级：先走 Cloudflare 代理，再直连，最后用上传时存在本机 IndexedDB 的副本。 */
+function photoProxyUrl(){
+  var cfg = (typeof state !== 'undefined' && state && state.apiConfig) || {};
+  var v = (cfg.photoProxy || '').trim();
+  if(v) return v.replace(/\/+$/, '');
+  return PHOTO_PROXY_DEFAULT ? String(PHOTO_PROXY_DEFAULT).replace(/\/+$/, '') : '';
+}
+function viaProxy(url){
+  var p = photoProxyUrl();
+  if(!p) return url;
+  var m = String(url).match(/\/storage\/v1\/object\/public\/(.+)$/);
+  if(!m) return url;
+  return p.replace(/\/+$/, '') + '/' + m[1];
+}
+/* 本机副本：以图片 URL 为 key 存一份 base64，断网/换网络时兜底 */
+function cachePhotoLocally(url, dataUrl){
+  if(!url || !isHttpUrl(url) || !isDataUrl(dataUrl)) return Promise.resolve();
+  return idbOpen().then(function(db){
+    return new Promise(function(resolve){
+      var tx = db.transaction('photos', 'readwrite');
+      tx.objectStore('photos').put(dataUrl, 'u:' + url);
+      tx.oncomplete = resolve;
+      tx.onerror = resolve;
+    });
+  }).catch(function(){});
+}
+function getLocalCopy(url){
+  if(!url || !isHttpUrl(url)) return Promise.resolve('');
+  return idbOpen().then(function(db){
+    return new Promise(function(resolve){
+      var tx = db.transaction('photos', 'readonly');
+      var r = tx.objectStore('photos').get('u:' + url);
+      r.onsuccess = function(){ resolve(r.result || ''); };
+      r.onerror = function(){ resolve(''); };
+    });
+  }).catch(function(){ return ''; });
+}
+/* 图片成功显示后，顺手在本机留一份副本（走浏览器缓存，几乎不额外耗流量）。
+   这样即使是上传时代久远、没存过副本的旧照片，之后换到连不上 supabase 的网络也能显示。 */
+var _localCopyTried = Object.create(null);
+function ensureLocalCopy(url){
+  if(!isHttpUrl(url) || _localCopyTried[url]) return;
+  _localCopyTried[url] = 1;
+  fetch(url, { mode: 'cors', cache: 'force-cache' })
+    .then(function(r){ return r.blob(); })
+    .then(function(b){
+      return new Promise(function(res, rej){
+        var fr = new FileReader();
+        fr.onload = function(){ res(fr.result); };
+        fr.onerror = rej;
+        fr.readAsDataURL(b);
+      });
+    })
+    .then(function(d){ if(d && d.length > 1000) cachePhotoLocally(url, d); })
+    .catch(function(){});
+}
+
+/* 给一张图片绑定多级回退：代理 → 直连 → 本机副本 */
+function bindPhotoFallback(img, ref){
+  // 同一元素可能被重复调用（灯箱左右切换），先解绑上一次的处理器，避免回退链被污染
+  if(img._photoFail){
+    try{ img.removeEventListener('error', img._photoFail); }catch(e){}
+    img._photoFail = null;
+  }
+  var cands = [];
+  if(isDataUrl(ref)){
+    cands.push(ref);
+  }else if(isHttpUrl(ref)){
+    var proxied = viaProxy(ref);
+    if(proxied !== ref) cands.push(proxied);
+    cands.push(ref);
+  }
+  if(!cands.length) return;
+  var i = 0;
+  function onFail(){
+    i++;
+    if(i < cands.length){ img.src = cands[i]; return; }
+    try{ img.removeEventListener('error', onFail); }catch(e){}
+    img._photoFail = null;
+    if(isHttpUrl(ref)){
+      getLocalCopy(ref).then(function(d){ if(d) img.src = d; });
+    }
+  }
+  img._photoFail = onFail;
+  img.addEventListener('error', onFail);
+  img.addEventListener('load', function onOk(){
+    try{ img.removeEventListener('load', onOk); }catch(e){}
+    if(isHttpUrl(ref)) ensureLocalCopy(ref);   // 显示成功后补一份本机副本
+  });
+  img.src = cands[0];
+}
+
 /* 渲染后把 <img data-photo="引用"> 批量填充为真实图片 */
 function hydratePhotos(root){
   var nodes = (root || document).querySelectorAll('img[data-photo]');
   if(!nodes.length) return;
-  var keys = [], pending = [];
+  var keys = [];
   Array.prototype.forEach.call(nodes, function(img){
     var ref = img.getAttribute('data-photo') || '';
     if(!ref) return;
-    if(isDataUrl(ref) || isHttpUrl(ref)){ img.src = ref; return; }
+    if(isDataUrl(ref)){ img.src = ref; return; }
+    if(isHttpUrl(ref)){ bindPhotoFallback(img, ref); return; }
     if(photoCache[ref]){ img.src = photoCache[ref]; return; }
-    if(isIdbRef(ref)){ keys.push(ref.slice(4)); pending.push(img); }
+    if(isIdbRef(ref)) keys.push(ref.slice(4));
   });
   if(!keys.length) return;
   idbGetMany(keys).then(function(map){
@@ -1510,8 +1618,14 @@ function closeLightbox(){ document.getElementById('modalLightbox').classList.rem
 function renderLightbox(){
   var ref = lbState.list[lbState.idx] || '';
   var imgEl = document.getElementById('lbImg');
-  if(isDataUrl(ref) || isHttpUrl(ref)){ imgEl.src = ref; }
-  else { imgEl.src = ''; resolvePhoto(ref).then(function(s){ if(s) imgEl.src = s; }); }
+  if(isHttpUrl(ref)){
+    bindPhotoFallback(imgEl, ref);          // 代理 → 直连 → 本机副本
+  }else if(isDataUrl(ref)){
+    imgEl.src = ref;
+  }else{
+    imgEl.src = '';
+    resolvePhoto(ref).then(function(s){ if(s) imgEl.src = s; });
+  }
   document.getElementById('lbCount').textContent = (lbState.idx+1)+' / '+lbState.list.length;
   document.getElementById('lbMeta').textContent = lbState.meta || '';
   document.getElementById('lbPrev').disabled = (lbState.idx<=0);
@@ -1656,6 +1770,8 @@ function openApiModal(){
   document.getElementById('apiKey').value = state.apiConfig.key||'';
   document.getElementById('apiModel').value = state.apiConfig.model||'gpt-3.5-turbo';
   document.getElementById('apiProxy').value = state.apiConfig.proxyUrl||'';
+  var ppEl = document.getElementById('photoProxy');
+  if(ppEl) ppEl.value = state.apiConfig.photoProxy||'';
   openModal('modalApi');
 }
 document.getElementById('apiSaveBtn').addEventListener('click', function(){
@@ -1663,7 +1779,8 @@ document.getElementById('apiSaveBtn').addEventListener('click', function(){
     endpoint: document.getElementById('apiEndpoint').value.trim(),
     key: document.getElementById('apiKey').value.trim(),
     model: document.getElementById('apiModel').value.trim() || 'gpt-3.5-turbo',
-    proxyUrl: document.getElementById('apiProxy').value.trim()
+    proxyUrl: document.getElementById('apiProxy').value.trim(),
+    photoProxy: (document.getElementById('photoProxy') || {}).value ? document.getElementById('photoProxy').value.trim() : ''
   };
   saveState(); closeModal('modalApi');
 });
