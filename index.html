@@ -513,7 +513,7 @@
 <!-- ===== 弹窗：AI 设置 ===== -->
 <div class="modal-mask" id="modalApi">
   <div class="modal-box">
-    <p class="modal-title">🤖 智能推荐 · API 设置</p>
+    <p class="modal-title">⚙️ 接口与存储设置</p>
     <div class="mini-hint">支持任意 OpenAI 兼容接口（如 OpenAI / DeepSeek / Moonshot 等），密钥仅保存在本机浏览器 localStorage 中，不会上传任何服务器。</div>
     <div class="mini-hint" style="margin-top:6px;color:var(--text-light);">若浏览器提示 Failed to fetch（跨域被拦）：可在下方「代理地址」填入一个代理（如 Cloudflare Worker）；留空则尝试走 Supabase 函数代理（需部署 ai-proxy，且仅对部分接口有效）。</div>
     <div class="field-label">接口地址 Endpoint</div>
@@ -522,6 +522,18 @@
     <input class="field-input" id="apiKey" placeholder="sk-xxxxxxxx" type="password">
     <div class="field-label">模型名称 Model</div>
     <input class="field-input" id="apiModel" placeholder="gpt-3.5-turbo">
+    <div class="field-label">☁️ 国内云 API 地址（强烈推荐，解决照片裂图 / 同步断开）</div>
+    <input class="field-input" id="jjllApi" placeholder="https://jjll-api-xxxxx.cn-hangzhou.fcapp.run">
+    <div class="field-label">访问口令（若后端设置了 JJLL_TOKEN 才填）</div>
+    <input class="field-input" id="jjllToken" placeholder="留空表示后端未设口令" type="password">
+    <div class="mini-hint" style="margin-top:6px;color:var(--text-light);">
+      supabase.co 在国内很多网络下连不上（实测 TCP 被重置）。填入阿里云函数计算地址后，
+      家庭数据与照片全部改走国内节点（OSS 存储，FC 内网写入），手机任何网络都能看图。
+      地址会随家庭数据同步，填一次所有设备生效；口令仅存本机。
+    </div>
+    <div class="modal-actions" style="margin-top:8px;">
+      <button class="btn btn-ghost" id="cloudMigrateBtn">🚚 迁移照片到国内云</button>
+    </div>
     <div class="field-label">代理地址（可选，解决跨域）</div>
     <input class="field-input" id="apiProxy" placeholder="https://xxx.workers.dev/  或留空走 Supabase 代理">
     <div class="field-label">🖼️ 图片代理地址（可选，多个用逗号分隔）</div>
@@ -599,7 +611,26 @@ var SUPABASE_URL = 'https://lrjiiacbzpcfpstxakuu.supabase.co';   // Supabase 项
 var SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxyamlpYWNienBjZnBzdHhha3V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczNjE3MTAsImV4cCI6MjEwMjkzNzcxMH0.EkoYcU_L7nn7A44fj4Q86yVdPxwL4L1VWhinS53MkMA';   // anon public key
 var FAMILYCODE_KEY = 'jjll_family_code';
 
-var syncEnabled = !!(SUPABASE_URL && SUPABASE_ANON);
+/* ===== 国内后端：阿里云函数计算 + OSS =====
+   supabase.co 在国内大量网络下 TCP 被重置（实测 Connection reset），照片裂图、同步也断。
+   配置「国内云 API 地址」后，数据与照片全部走国内节点：FC 域名国内直连，FC 与 OSS 内网互通。 */
+function apiBase(){
+  var v = (typeof state !== 'undefined' && state && state.jjllApi) || '';
+  return String(v || '').trim().replace(/\/+$/, '');
+}
+function apiToken(){
+  var c = (typeof state !== 'undefined' && state && state.apiConfig) || {};
+  return String(c.jjllToken || '').trim();
+}
+function useOss(){ return !!apiBase(); }
+function ossHeaders(extra){
+  var h = Object.assign({}, extra || {});
+  var t = apiToken();
+  if(t) h['x-jjll-token'] = t;
+  return h;
+}
+
+var syncEnabled = true;   // Supabase 常量内置；国内后端地址在运行时配置，两者至少其一可用
 function sbBase(){ return (SUPABASE_URL || '').replace(/\/+$/,'') + '/rest/v1/families'; }
 function sbHeaders(){ return { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON, 'Content-Type': 'application/json' }; }
 var currentChannel = null;   // 复用作轮询定时器
@@ -625,6 +656,7 @@ function syncSave(){
   if(syncTimer) clearTimeout(syncTimer);
   syncTimer = setTimeout(function(){
     justSynced = Date.now();   // 仅用于本机 2s 内跳过自身回声，使用本机时间即可
+    if(useOss()){ ossSyncSave(); return; }   // 国内后端（阿里云 FC + OSS）
     var attempt = 0;
     function tryOnce(){
       attempt++;
@@ -676,6 +708,7 @@ function syncLoad(cb){
   if(!syncEnabled){ if(cb) cb(); return; }
   var code = getFamilyCode();
   if(!code){ if(cb) cb(); return; }
+  if(useOss()){ ossSyncLoad(cb); return; }
   fetch(sbBase() + '?code=eq.' + encodeURIComponent(code) + '&select=data,updated_at&limit=1', { headers: sbHeaders(), cache: 'no-store' })
     .then(function(r){ return r.json(); })
     .then(function(rows){
@@ -712,6 +745,7 @@ function subscribeRealtime(){
     if(Date.now() - justSynced < 2000) return;   // 刚保存过，跳过自身回声
     var c = getFamilyCode();
     if(!c) return;
+    if(useOss()){ ossPoll(); return; }
     fetch(sbBase() + '?code=eq.' + encodeURIComponent(c) + '&select=updated_at&limit=1', { headers: sbHeaders(), cache: 'no-store' })
       .then(function(r){ return r.json(); })
       .then(function(rows){
@@ -724,6 +758,100 @@ function subscribeRealtime(){
       }).catch(function(){});
   }, 2000);   // 轮询间隔 2 秒，缩短跨设备同步延迟
 }
+
+/* =========================================================
+   国内后端（阿里云 FC + OSS）：家庭数据读写与照片上传
+   ========================================================= */
+function ossStateUrl(code, extra){
+  return apiBase() + '/state?code=' + encodeURIComponent(code) + (extra || '');
+}
+function ossGet(code){
+  return fetch(ossStateUrl(code), { headers: ossHeaders(), cache: 'no-store' })
+    .then(function(r){ return r.json(); });
+}
+function ossPut(code, data, baseTs){
+  return fetch(ossStateUrl(code), {
+    method: 'POST',
+    headers: ossHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ data: data, ts: baseTs || 0 })
+  }).then(function(r){ return r.json(); });
+}
+function ossSyncSave(){
+  var code = getFamilyCode();
+  var attempt = 0;
+  function tryOnce(){
+    attempt++;
+    try{
+      // currentUserId 和 apiConfig 是设备本地偏好，不参与云同步
+      var dataToSync = JSON.parse(JSON.stringify(state));
+      delete dataToSync.currentUserId;
+      delete dataToSync.apiConfig;
+      return ossGet(code).then(function(res){
+        var base = (res && res.data) || null;
+        var baseTs = (res && res.ts) || 0;
+        // 与现有实现一致：按 id 并集 + LWW 合并后再写，CAS(ts) 失败则重读重试
+        var merged = mergeState(dataToSync, base);
+        return ossPut(code, merged, baseTs).then(function(r){
+          if(r && r.ok){ if(r.ts) lastSeenTs = r.ts; return true; }
+          if(attempt < 4) return tryOnce();
+          return false;
+        });
+      }).catch(function(){ if(attempt < 4) return tryOnce(); });
+    }catch(e){ if(attempt < 4) return tryOnce(); }
+  }
+  return tryOnce();
+}
+function ossSyncLoad(cb){
+  var code = getFamilyCode();
+  ossGet(code).then(function(res){
+    if(res && res.data){
+      var localCurrentUserId = state.currentUserId;
+      var localApiConfig = state.apiConfig;
+      state = mergeState(state, res.data);
+      if(localCurrentUserId && state.users && state.users.some(function(u){ return u.id === localCurrentUserId; })){
+        state.currentUserId = localCurrentUserId;
+      }
+      if(localApiConfig) state.apiConfig = localApiConfig;    // 密钥等本机偏好不被云端覆盖
+      normalizeState();
+      saveStateLocalOnly();
+      if(res.ts) lastSeenTs = res.ts;
+    }
+    if(cb) cb();
+  }).catch(function(){ if(cb) cb(); });
+}
+function ossPoll(){
+  var code = getFamilyCode();
+  if(!code) return;
+  fetch(ossStateUrl(code, '&only=ts'), { headers: ossHeaders(), cache: 'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      if(res && res.ts && res.ts > lastSeenTs) ossSyncLoad(function(){ renderAll(); });
+    }).catch(function(){});
+}
+/* 照片上传：前端 → FC（国内直连）→ OSS 内网写入，返回 OSS 公开读地址（浏览器直连显示，不走 FC 转流量） */
+function ossUploadPhoto(dataUrl){
+  var name = 'photos/' + photoName();
+  return fetch(apiBase() + '/upload?code=' + encodeURIComponent(getFamilyCode() || 'public') + '&name=' + encodeURIComponent(name), {
+    method: 'POST',
+    headers: ossHeaders({ 'Content-Type': 'image/jpeg' }),
+    body: dataUrlToBlob(dataUrl)
+  }).then(function(r){ return r.json(); }).then(function(j){
+    if(!j || !j.ok || !j.url) throw new Error((j && j.error) || 'oss-upload-failed');
+    return j.url;
+  });
+}
+var OSS_PUBLIC_BASE = '';
+function ossLoadInfo(){
+  if(!useOss()) return Promise.resolve('');
+  return fetch(apiBase() + '/info', { headers: ossHeaders(), cache: 'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if(j && j.publicBase) OSS_PUBLIC_BASE = String(j.publicBase).replace(/\/+$/, '');
+      return OSS_PUBLIC_BASE;
+    }).catch(function(){ return ''; });
+}
+function isOssRef(u){ return !!OSS_PUBLIC_BASE && isHttpUrl(u) && String(u).indexOf(OSS_PUBLIC_BASE) === 0; }
+
 function enterFamily(code){
   setFamilyCode(code);
   closeModal('modalFamily');
@@ -803,6 +931,8 @@ function normalizeState(){
   if(!state.customNotes) state.customNotes = {};
   if(!state.photoThumbs || typeof state.photoThumbs !== 'object') state.photoThumbs = {};
   if(typeof state.photoProxy !== 'string') state.photoProxy = (state.apiConfig && state.apiConfig.photoProxy) || '';
+  if(typeof state.jjllApi !== 'string') state.jjllApi = '';
+  if(state.apiConfig && typeof state.apiConfig.jjllToken !== 'string') state.apiConfig.jjllToken = '';
   /* 同步用墓碑：记录已删除条目的 id，便于跨设备传播「删除」 */
   if(!state._del) state._del = {};
   ['chilled','frozen','recipeRecords','todos','users'].forEach(function(t){ if(!state._del[t]) state._del[t]={}; });
@@ -1061,6 +1191,12 @@ function storePhoto(p){
     if(!ref || !isHttpUrl(ref) && !isIdbRef(ref)) return ref;
     return makeThumb(p).then(function(t){ if(t) noteThumb(ref, t); return ref; });
   }
+  if(useOss()){                       // 国内后端：FC → OSS 内网写入
+    return ossUploadPhoto(p).then(function(url){
+      cachePhotoLocally(url, p);
+      return withThumb(url);
+    }).catch(function(){ return toIdb().then(withThumb); });
+  }
   if(_sbPhotoOk === false) return toIdb().then(withThumb);
   return sbUploadPhoto(p).then(function(url){
     _sbPhotoOk = true;
@@ -1122,8 +1258,9 @@ function viaProxy(url){
 function buildCandidates(ref){
   if(!isHttpUrl(ref)) return [];
   var m = String(ref).match(/\/storage\/v1\/object\/public\/(.+)$/);
-  var tail = m ? m[1] : '';
-  var proxies = proxyList().map(function(p){ return { k:'proxy', url: tail ? (p + '/' + tail) : ref }; });
+  if(!m) return [{ k:'direct', url: ref }];      // 非 Supabase 地址（如 OSS 直连）就直接取，无需代理
+  var tail = m[1];
+  var proxies = proxyList().map(function(p){ return { k:'proxy', url: p + '/' + tail }; });
   var direct = [{ k:'direct', url: ref }];
   return (photoChan() === 'direct') ? direct.concat(proxies) : proxies.concat(direct);
 }
@@ -1901,6 +2038,10 @@ function openApiModal(){
   document.getElementById('apiKey').value = state.apiConfig.key||'';
   document.getElementById('apiModel').value = state.apiConfig.model||'gpt-3.5-turbo';
   document.getElementById('apiProxy').value = state.apiConfig.proxyUrl||'';
+  var jaEl = document.getElementById('jjllApi');
+  if(jaEl) jaEl.value = state.jjllApi || '';
+  var jtEl = document.getElementById('jjllToken');
+  if(jtEl) jtEl.value = (state.apiConfig && state.apiConfig.jjllToken) || '';
   var ppEl = document.getElementById('photoProxy');
   if(ppEl) ppEl.value = state.apiConfig.photoProxy || state.photoProxy || '';
   openModal('modalApi');
@@ -1914,6 +2055,11 @@ document.getElementById('apiSaveBtn').addEventListener('click', function(){
     photoProxy: (document.getElementById('photoProxy') || {}).value ? document.getElementById('photoProxy').value.trim() : ''
   };
   state.photoProxy = state.apiConfig.photoProxy;   // 随家庭数据同步，填一次其它设备自动生效
+  var jaEl = document.getElementById('jjllApi');
+  var jtEl = document.getElementById('jjllToken');
+  state.jjllApi = jaEl ? String(jaEl.value || '').trim().replace(/\/+$/, '') : '';
+  state.apiConfig.jjllToken = jtEl ? String(jtEl.value || '').trim() : '';
+  ossLoadInfo();                                   // 拉取 OSS 公开读域名，用于判断照片是否已迁移
   saveState(); closeModal('modalApi');
 });
 
@@ -1998,6 +2144,57 @@ function rebuildThumbs(){
   });
 }
 document.getElementById('thumbRebuildBtn').addEventListener('click', rebuildThumbs);
+
+/* ---- 迁移照片到国内云：把引用从 supabase / 本机 换成 OSS ----
+   数据源优先级：本机原图副本 → IndexedDB 原图 → 缩略图（画质降级但至少能显示） */
+function migratePhotosToCloud(){
+  var out = document.getElementById('photoTestOut');
+  if(!useOss()){
+    if(out) out.textContent = '请先填写上方「国内云 API 地址」并点保存。';
+    return;
+  }
+  var refs = [];
+  (state.recipeRecords || []).forEach(function(r){
+    (r.photos || []).forEach(function(p){ if(p && refs.indexOf(p) < 0) refs.push(p); });
+    if(r.photo && refs.indexOf(r.photo) < 0) refs.push(r.photo);
+  });
+  var todo = refs.filter(function(r){ return !isOssRef(r); });
+  if(!todo.length){ if(out) out.textContent = '所有照片都已在国內云上 ✓'; return; }
+  var done = 0, ok = 0, fail = 0;
+  function flush(){ if(out) out.textContent = '迁移中… ' + done + '/' + todo.length + '（成功 ' + ok + '，失败 ' + fail + '）'; }
+  function tick(success){
+    if(success) ok++; else fail++;
+    done++; flush();
+    if(done >= todo.length){
+      if(out) out.textContent = '迁移完成：成功 ' + ok + ' 张，失败 ' + fail + ' 张。' + (ok ? '已写入本地，正在同步到云端…' : '');
+      if(ok) saveState();
+    }
+  }
+  flush();
+  todo.forEach(function(ref){
+    var src;
+    if(isHttpUrl(ref)) src = getLocalCopy(ref);
+    else if(isIdbRef(ref)) src = idbGet(ref.slice(4));
+    else src = Promise.resolve(ref);
+    src.then(function(d){
+      if(!d || !isDataUrl(d)) return Promise.reject(new Error('no-data'));
+      return ossUploadPhoto(d).then(function(url){
+        var th = thumbOf(ref);
+        (state.recipeRecords || []).forEach(function(r){
+          var changed = false;
+          (r.photos || []).forEach(function(p, i){ if(p === ref){ r.photos[i] = url; changed = true; } });
+          if(r.photo === ref){ r.photo = url; changed = true; }
+          if(changed) r.updatedAt = Date.now();
+        });
+        if(th) noteThumb(url, th);
+        cachePhotoLocally(url, d);
+      });
+    }).then(function(){ tick(true); }, function(){ tick(false); });
+  });
+}
+document.getElementById('cloudMigrateBtn').addEventListener('click', function(){
+  ossLoadInfo().then(migratePhotosToCloud);
+});
 
 /* 静默版补建：本机只要能加载出原图就补缩略图并同步出去，
    于是「这台设备看得到 → 换台设备也看得到」，不必手工操作。串行执行，不抢带宽。 */
@@ -2437,6 +2634,7 @@ function init(){
   setTimeout(function(){
     if(state && state.recipeRecords && state.recipeRecords.length) autoRebuildThumbs(30);
   }, 5000);
+  ossLoadInfo();   // 国内后端：先拿到 OSS 公开读域名，后续好判断照片是否已迁移
   if(syncEnabled){
     if(getFamilyCode()){
       syncLoad(function(){ renderAll(); subscribeRealtime(); });
