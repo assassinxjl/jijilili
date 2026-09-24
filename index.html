@@ -204,6 +204,21 @@
       width:26px;height:26px;border-radius:50%;border:none;background:#FFE4CC;color:var(--text);
       cursor:pointer;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0;
     }
+  .top-settings-btn{
+    width:34px;height:34px;border-radius:50%;border:none;background:#fff;color:var(--text);
+    box-shadow:var(--shadow);cursor:pointer;font-size:17px;line-height:1;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+  }
+  /* 国内云配置引导条 */
+  .cloud-tip{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    background:#EAF4FF;border:1px solid #B9DBFF;color:#1F4E79;
+    border-radius:14px;padding:10px 12px;margin-bottom:14px;font-size:13px;line-height:1.6;
+    box-shadow:var(--shadow);
+  }
+  .cloud-tip .ct-close{
+    margin-left:auto;border:none;background:transparent;color:#5B87B5;font-size:16px;cursor:pointer;padding:0 4px;flex-shrink:0;
+  }
 
   .card{
     background:var(--card);
@@ -445,13 +460,17 @@
     <div class="topbar">
       <button class="menu-toggle" id="menuToggle" aria-label="打开菜单">☰</button>
       <div class="crumb" id="crumb">吃吃吃吃 <span class="l2name">冰箱食材</span></div>
-      <div class="user-box">
-        <span class="user-dot" id="userDot"></span>
-        <select class="user-select" id="userSelect"></select>
-        <button class="user-add-btn" id="userAddBtn" title="添加家庭成员">＋</button>
-        <button class="user-del-btn" id="userDelBtn" title="删除当前成员">－</button>
+      <div class="topbar-right" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <div class="user-box">
+          <span class="user-dot" id="userDot"></span>
+          <select class="user-select" id="userSelect"></select>
+          <button class="user-add-btn" id="userAddBtn" title="添加家庭成员">＋</button>
+          <button class="user-del-btn" id="userDelBtn" title="删除当前成员">－</button>
+        </div>
+        <button class="top-settings-btn" id="topSettingsBtn" title="接口与存储设置">⚙️</button>
       </div>
     </div>
+    <div id="cloudTipHost"></div>
     <div id="content"></div>
   </main>
   <div class="sb-overlay" id="sbOverlay"></div>
@@ -565,8 +584,12 @@
       · 手机上可通过浏览器菜单「添加到主屏幕」把它变成一个图标，效果因手机浏览器而略有差异。<br>
       · 电脑上可把该 html 文件拖到桌面，双击即可用浏览器打开；也可为浏览器创建桌面快捷方式指向该文件。
     </div>
-    <div class="modal-actions" style="justify-content:space-between;">
-      <div style="display:flex;gap:8px;">
+    <div id="aboutCloudRow" class="mini-hint" style="margin-top:10px;padding:10px 12px;border:1px dashed #FFCF9B;background:#FFF6E9;border-radius:12px;font-size:13px;line-height:1.7;color:#8A5A20;">
+      照片在别的网络下显示不出来 / 同步总是断开？点右边按钮配置国内云即可解决。当前状态：<b id="aboutCloudState">检查中…</b>
+    </div>
+    <div class="modal-actions" style="margin-top:12px;justify-content:space-between;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary" id="aboutCloudBtn">☁️ 接口与存储设置</button>
         <button class="btn btn-soft" id="exportBtn">导出数据</button>
         <button class="btn btn-soft" id="importBtn">导入数据</button>
         <button class="btn btn-soft" id="switchFamilyBtn">切换家庭码</button>
@@ -1636,7 +1659,7 @@ function renderFridgeView(box){
     '<p class="section-title">🤖 今日智能推荐</p>'+
     '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
       '<button class="btn btn-primary" id="aiRecommendBtn">✨ 根据冰箱食材推荐</button>'+
-      '<button class="btn btn-soft" id="aiSettingsBtn">⚙️ API 设置</button>'+
+      '<button class="btn btn-soft" id="aiSettingsBtn">⚙️ 接口与存储设置</button>'+
     '</div>'+
     '<div class="ai-result" id="aiResult">'+esc(lastAiText)+'</div>'+
   '</div>'+
@@ -2061,6 +2084,8 @@ document.getElementById('apiSaveBtn').addEventListener('click', function(){
   state.apiConfig.jjllToken = jtEl ? String(jtEl.value || '').trim() : '';
   ossLoadInfo();                                   // 拉取 OSS 公开读域名，用于判断照片是否已迁移
   saveState(); closeModal('modalApi');
+  renderCloudTip();                                // 配置完立刻收掉顶部引导条
+  refreshAboutCloudState();
 });
 
 /* ---- 图片自检：逐个通道试加载一张真实照片，直接告诉你哪个通 ---- */
@@ -2586,7 +2611,47 @@ document.getElementById('mgmtBtn').addEventListener('click', function(){
   renderSidebar();
   renderMgmtView(document.getElementById('content'));
 });
-document.getElementById('aboutBtn').addEventListener('click', function(){ openModal('modalAbout'); });
+/* ===== 「接口与存储设置」的多个入口 =====
+   原来只有「今日智能推荐」卡片里一个叫「API 设置」的小按钮，太隐蔽，现补齐三处：
+   ① 右上角齿轮（任何页面都能点） ②「关于 & 数据」弹窗里的醒目按钮 ③ 未配置时的顶部引导条 */
+function openApiFromAbout(){ closeModal('modalAbout'); setTimeout(openApiModal, 120); }
+var topSettingsBtn = document.getElementById('topSettingsBtn');
+if(topSettingsBtn) topSettingsBtn.addEventListener('click', openApiModal);
+var aboutCloudBtn = document.getElementById('aboutCloudBtn');
+if(aboutCloudBtn) aboutCloudBtn.addEventListener('click', openApiFromAbout);
+
+/* 顶部引导条：还没配国内云地址时提示一次，关掉后不再打扰 */
+function renderCloudTip(){
+  var host = document.getElementById('cloudTipHost');
+  if(!host) return;
+  if(state.jjllApi){
+    host.innerHTML = '';
+    return;
+  }
+  try{ if(localStorage.getItem('jjll_tip_closed') === '1'){ host.innerHTML = ''; return; } }catch(e){}
+  host.innerHTML =
+    '<div class="cloud-tip">'+
+      '<span>☁️ 照片在别的网络下裂图 / 同步连不上？把数据和照片迁到国内云（约 1 元/月）即可解决。</span>'+
+      '<button class="btn btn-primary" id="cloudTipBtn" style="padding:6px 12px;font-size:13px;">去配置</button>'+
+      '<button class="ct-close" id="cloudTipClose" title="不再提示">×</button>'+
+    '</div>';
+  var b = document.getElementById('cloudTipBtn');
+  if(b) b.addEventListener('click', openApiModal);
+  var c = document.getElementById('cloudTipClose');
+  if(c) c.addEventListener('click', function(){
+    try{ localStorage.setItem('jjll_tip_closed','1'); }catch(e){}
+    host.innerHTML = '';
+  });
+}
+function refreshAboutCloudState(){
+  var el = document.getElementById('aboutCloudState');
+  if(!el) return;
+  el.textContent = state.jjllApi ? ('已启用国内云（' + state.jjllApi + '）') : '未配置，当前走 Supabase（国内常连不上）';
+}
+document.getElementById('aboutBtn').addEventListener('click', function(){
+  refreshAboutCloudState();
+  openModal('modalAbout');
+});
 document.getElementById('switchFamilyBtn').addEventListener('click', function(){ closeModal('modalAbout'); openFamilyModal(); });
 document.getElementById('exportBtn').addEventListener('click', function(){
   var blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
@@ -2647,6 +2712,8 @@ function init(){
   renderAll();
   renderDeco();
   setupPWA();
+  renderCloudTip();        // 未配置国内云时，在页面顶部给出一条引导（可关闭）
+  refreshAboutCloudState();
   /* 旧版本把照片 base64 存在 localStorage 里极易写满，首次启动迁移到 IndexedDB/Storage
      （延后 1.5s 执行，避开首次云端同步，避免迁移结果被覆盖） */
   setTimeout(function(){
