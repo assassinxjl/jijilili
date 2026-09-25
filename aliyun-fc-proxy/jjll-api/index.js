@@ -26,15 +26,44 @@ const http = require('http');
 const https = require('https');
 const crypto = require('crypto');
 
+/* ------------------------------------------------------------------
+ * 找不到控制台「环境变量」入口时，直接把值填在下面的 DEFAULTS 里也能用。
+ * 两种方式任选其一；环境变量优先级更高（填了就以环境变量为准）。
+ * ------------------------------------------------------------------ */
+const DEFAULTS = {
+  OSS_AK: '',            // AccessKey ID
+  OSS_SK: '',            // AccessKey Secret
+  OSS_BUCKET: '',        // 如 jijilili
+  OSS_ENDPOINT: '',      // 内网：oss-cn-hangzhou-internal.aliyuncs.com
+  OSS_PUBLIC_BASE: '',   // 如 https://jijilili.oss-cn-hangzhou.aliyuncs.com
+  JJLL_TOKEN: ''         // 可选口令，留空表示不校验
+};
+function env(k) {
+  const v = process.env[k];
+  if (v !== undefined && v !== '') return v;
+  return DEFAULTS[k] || '';
+}
 const PORT = process.env.CAPORT || 9000;
-const AK = process.env.OSS_AK || '';
-const SK = process.env.OSS_SK || '';
-const BUCKET = process.env.OSS_BUCKET || '';
-const ENDPOINT = process.env.OSS_ENDPOINT || 'oss-cn-hangzhou-internal.aliyuncs.com';
-const PUBLIC_BASE = (process.env.OSS_PUBLIC_BASE || ('https://' + BUCKET + '.oss-cn-hangzhou.aliyuncs.com')).replace(/\/+$/, '');
-const TOKEN = process.env.JJLL_TOKEN || '';
+const AK = env('OSS_AK');
+const SK = env('OSS_SK');
+const BUCKET = env('OSS_BUCKET');
+const ENDPOINT = env('OSS_ENDPOINT') || 'oss-cn-hangzhou-internal.aliyuncs.com';
+const PUBLIC_BASE = (env('OSS_PUBLIC_BASE') || ('https://' + BUCKET + '.oss-cn-hangzhou.aliyuncs.com')).replace(/\/+$/, '');
+const TOKEN = env('JJLL_TOKEN');
 const HOST = BUCKET + '.' + ENDPOINT;
 const MAX_UPLOAD = 15 * 1024 * 1024;
+
+/* 配置项来源，用于自检时一眼看出哪些没配上 */
+function configReport() {
+  const keys = ['OSS_AK', 'OSS_SK', 'OSS_BUCKET', 'OSS_ENDPOINT', 'OSS_PUBLIC_BASE', 'JJLL_TOKEN'];
+  const rep = {};
+  keys.forEach((k) => {
+    if (process.env[k] !== undefined && process.env[k] !== '') rep[k] = '环境变量';
+    else if (DEFAULTS[k]) rep[k] = '代码内置';
+    else rep[k] = k === 'JJLL_TOKEN' ? '未设置（可选）' : '❌ 缺失';
+  });
+  return rep;
+}
 
 /* ---------- OSS 签名（V1，Header 方式，无需 SDK 依赖） ---------- */
 function ossSign(verb, contentType, date, resource) {
@@ -130,7 +159,19 @@ const server = http.createServer((req, res) => {
 
   /* 自检：打开函数根地址就能看到 OSS 是否配置正确（AK/SK、bucket、内网 endpoint） */
   if (pathname === '/' || pathname === '') {
-    const base = { service: 'jijilili-backend', bucket: BUCKET, publicBase: PUBLIC_BASE, time: new Date().toISOString() };
+    const missing = ['OSS_AK', 'OSS_SK', 'OSS_BUCKET'].filter((k) => !env(k));
+    const base = {
+      service: 'jijilili-backend',
+      bucket: BUCKET,
+      publicBase: PUBLIC_BASE,
+      config: configReport(),
+      time: new Date().toISOString()
+    };
+    if (missing.length) {
+      base.ok = false;
+      base.oss = '❌ 还没配上：' + missing.join('、') + '。请在本函数「配置 → 高级配置 → 编辑 → 环境变量」里补齐，或直接写在本文件顶部的 DEFAULTS 里，然后点「部署」。';
+      return sendJSON(res, 200, base);
+    }
     return oss('GET', 'data/_ping.json', null, '').then((r) => {
       const ok = r.status === 200 || r.status === 404;
       base.ok = ok;

@@ -1,16 +1,16 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="吉吉利利">
-<meta name="theme-color" content="#FF8FA3">
+<html lang="zh-CN" data-page-node-id="hZkj38zBve24IuCpjM1tIB">
+<head data-page-node-id="16jAIx3bc53gD5rc7J4LAC">
+<meta charset="UTF-8" data-page-node-id="pImqbiAS1CcCoOSE687TPI">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" data-page-node-id="bAfhIeqmg7eNDQVvSxQPOP">
+<meta name="apple-mobile-web-app-capable" content="yes" data-page-node-id="feX6qWEFUtZOGJwWhBpaQG">
+<meta name="mobile-web-app-capable" content="yes" data-page-node-id="v6yXUDaf5c2G0GWM5wuE2e">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" data-page-node-id="Uiu5eOGLMnRa0SCthYAW4t">
+<meta name="apple-mobile-web-app-title" content="吉吉利利" data-page-node-id="B77U82DSnLDaUdIFPL1UQj">
+<meta name="theme-color" content="#FF8FA3" data-page-node-id="JXBUc9adVmMrWoAJ8CFtm9">
 <title>吉吉利利 · 家庭管理工作台</title>
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icon-512.png">
+<link rel="manifest" href="manifest.webmanifest" data-page-node-id="9ggzL72ftIgkcpiQWcq2gA">
+<link rel="apple-touch-icon" href="icon-512.png" data-page-node-id="9RymIYdK5QJVGDszsfv7ZE">
 <!-- 同步层已改为直接调用 Supabase REST（fetch），无需外部 CDN，国内网络更稳 -->
 <style>
   :root{
@@ -438,179 +438,179 @@
   }
 </style>
 </head>
-<body>
+<body data-page-node-id="8qxVYgN6a6YUO8kuU9HzLF">
 
-<div class="app" id="app">
+<div class="app" id="app" data-page-node-id="Qv9KwDGJIocADAcLi8gDZ0">
   <!-- ===== 侧边栏 ===== -->
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-      <span class="sidebar-logo">🍚</span>
-      <span class="sidebar-title">吉吉利利</span>
-      <button class="collapse-btn" id="collapseBtn" title="折叠/展开">◀</button>
+  <aside class="sidebar" id="sidebar" data-page-node-id="drUDGH8HI5fGh9sc7s9O6W">
+    <div class="sidebar-header" data-page-node-id="W6lD7niPuB23HVC0mY7QF8">
+      <span class="sidebar-logo" data-page-node-id="RJ1WtWyNWmEOikml79EQ5n">🍚</span>
+      <span class="sidebar-title" data-page-node-id="Fm57IyGQ6M8rFTIH5fdDzB">吉吉利利</span>
+      <button class="collapse-btn" id="collapseBtn" title="折叠/展开" data-page-node-id="P0E02x0LLccWkMbt4PRCMC">◀</button>
     </div>
-    <nav class="nav-tree" id="navTree"></nav>
-    <div class="sidebar-footer">
-      <button class="sidebar-footer-btn" id="mgmtBtn"><span>⚙️</span><span class="label-text">模块管理</span></button>
-      <button class="sidebar-footer-btn" id="aboutBtn"><span>ℹ️</span><span class="label-text">关于 & 数据</span></button>
+    <nav class="nav-tree" id="navTree" data-page-node-id="APYbPP462uIz67pEDAAgdE"></nav>
+    <div class="sidebar-footer" data-page-node-id="cSJv45vOIGqZ47EUERorXC">
+      <button class="sidebar-footer-btn" id="mgmtBtn" data-page-node-id="mGHOjQHDXpxin1kEH9ESE4"><span data-page-node-id="C0eNigjzds2JE9KBXOLg71">⚙️</span><span class="label-text" data-page-node-id="zzPGllSFCyKIPP3gm3eDGy">模块管理</span></button>
+      <button class="sidebar-footer-btn" id="aboutBtn" data-page-node-id="WMKGaKKaf9Ch6E4e0DNO4z"><span data-page-node-id="NVDrLF0Q5VFed2cC5yErWb">ℹ️</span><span class="label-text" data-page-node-id="YoOfPQK4oJr03EtRlE2vLZ">关于 & 数据</span></button>
     </div>
   </aside>
 
   <!-- ===== 主内容 ===== -->
-  <main class="main" id="main">
-    <div class="topbar">
-      <button class="menu-toggle" id="menuToggle" aria-label="打开菜单">☰</button>
-      <div class="crumb" id="crumb">吃吃吃吃 <span class="l2name">冰箱食材</span></div>
-      <div class="topbar-right" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <div class="user-box">
-          <span class="user-dot" id="userDot"></span>
-          <select class="user-select" id="userSelect"></select>
-          <button class="user-add-btn" id="userAddBtn" title="添加家庭成员">＋</button>
-          <button class="user-del-btn" id="userDelBtn" title="删除当前成员">－</button>
+  <main class="main" id="main" data-page-node-id="j0dI9yXxqiBRNOkquF1QkC">
+    <div class="topbar" data-page-node-id="a0jqmh3qgY6dpEt6cVbXQN">
+      <button class="menu-toggle" id="menuToggle" aria-label="打开菜单" data-page-node-id="EZcHDTSDzWTJAddu72KSMM">☰</button>
+      <div class="crumb" id="crumb" data-page-node-id="gE9e2Os2zQSnHFryreKPYQ">吃吃吃吃 <span class="l2name" data-page-node-id="xW3PszRxPLNkbKVXQC8nVa">冰箱食材</span></div>
+      <div class="topbar-right" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;" data-page-node-id="foJUlTfrQJUyWAcuK0mS0F">
+        <div class="user-box" data-page-node-id="Q4nrVCRNEDMvCQfmgdSrC5">
+          <span class="user-dot" id="userDot" data-page-node-id="zCzIKw9HszSGMXDQaCC8KA"></span>
+          <select class="user-select" id="userSelect" data-page-node-id="wSXPqDLckWjzIXgziC7AV5"></select>
+          <button class="user-add-btn" id="userAddBtn" title="添加家庭成员" data-page-node-id="sI07bpzQCZOWwHuPrm2iLa">＋</button>
+          <button class="user-del-btn" id="userDelBtn" title="删除当前成员" data-page-node-id="va3vtZ5WDJ8kdg2sv4K2ZR">－</button>
         </div>
-        <button class="top-settings-btn" id="topSettingsBtn" title="接口与存储设置">⚙️</button>
+        <button class="top-settings-btn" id="topSettingsBtn" title="接口与存储设置" data-page-node-id="ugQ0EacWeypGhB0tSvUGWC">⚙️</button>
       </div>
     </div>
-    <div id="cloudTipHost"></div>
-    <div id="content"></div>
+    <div id="cloudTipHost" data-page-node-id="OYISXylRCCvYOeHFTLAmeL"></div>
+    <div id="content" data-page-node-id="8ZC5c1BTuDBs7EE78j8ZgJ"></div>
   </main>
-  <div class="sb-overlay" id="sbOverlay"></div>
+  <div class="sb-overlay" id="sbOverlay" data-page-node-id="D0qkHbEBFdV1gwiB9KCChy"></div>
 </div>
 
 <!-- ===== 弹窗：冰箱食材 增/改 ===== -->
-<div class="modal-mask" id="modalFridge">
-  <div class="modal-box">
-    <p class="modal-title">🧊 <span id="fridgeModalTitle">添加食材</span></p>
-    <div class="field-label">名称</div>
-    <input class="field-input" id="fridgeName" placeholder="例如：鸡蛋">
-    <div class="field-label">保质期至</div>
-    <input class="field-input" id="fridgeExpiry" type="date">
-    <div class="field-label">分量 / 备注</div>
-    <input class="field-input" id="fridgeQty" placeholder="例如：6 个">
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeModal('modalFridge')">取消</button>
-      <button class="btn btn-primary" id="fridgeSaveBtn">保存</button>
+<div class="modal-mask" id="modalFridge" data-page-node-id="1azYZJy61BxYTGn4XpoVcV">
+  <div class="modal-box" data-page-node-id="0C2mku8mLkBsPyLUhpc8or">
+    <p class="modal-title" data-page-node-id="CtB74Wok63jpiQDzeOS9Pv">🧊 <span id="fridgeModalTitle" data-page-node-id="iXv5C3XvCaf2ClGMM6vJva">添加食材</span></p>
+    <div class="field-label" data-page-node-id="WRD1mSa191kQKjVtTe0hKX">名称</div>
+    <input class="field-input" id="fridgeName" placeholder="例如：鸡蛋" data-page-node-id="n6XWZNFqUOgRTEa6LuyPGw">
+    <div class="field-label" data-page-node-id="aJWtXacJh4J1pAv6DqllKx">保质期至</div>
+    <input class="field-input" id="fridgeExpiry" type="date" data-page-node-id="tmGSQAXh0CYO6NEX7eJWjw">
+    <div class="field-label" data-page-node-id="7VPV0doEc27PmslTr3bprE">分量 / 备注</div>
+    <input class="field-input" id="fridgeQty" placeholder="例如：6 个" data-page-node-id="jEXUbZNkjgHRPvOzNtEINq">
+    <div class="modal-actions" data-page-node-id="APpessHLlen3Y6MpCUHLMM">
+      <button class="btn btn-ghost" onclick="closeModal('modalFridge')" data-page-node-id="f7XJXBGwDlSQbQ1LFbRI4l">取消</button>
+      <button class="btn btn-primary" id="fridgeSaveBtn" data-page-node-id="H5OnhmgOgPCqztpSnSMDHQ">保存</button>
     </div>
   </div>
 </div>
 
 <!-- ===== 弹窗：饮食记录 ===== -->
-<div class="modal-mask" id="modalRecord">
-  <div class="modal-box">
-    <p class="modal-title">🍽️ 记录一餐</p>
-    <div class="field-label">日期</div>
-    <input class="field-input" id="recDate" type="date">
-    <div class="field-label">类型</div>
-    <div class="seg" id="recTypeSeg">
-      <button data-v="在家" class="active">🏠 在家</button>
-      <button data-v="外食">🍜 外食</button>
+<div class="modal-mask" id="modalRecord" data-page-node-id="XiD97l9jin8XTIYEx3ME5A">
+  <div class="modal-box" data-page-node-id="UxSb7juPBCqn9GjC0z4xmz">
+    <p class="modal-title" data-page-node-id="UqFVXTpxYKBvdwJXvpUM6u">🍽️ 记录一餐</p>
+    <div class="field-label" data-page-node-id="ODDeALw0KsuCzYMeNJvGfk">日期</div>
+    <input class="field-input" id="recDate" type="date" data-page-node-id="Ca9iy27GUHKNpIungzC0Xy">
+    <div class="field-label" data-page-node-id="g01idP9fo4W6dSCGzGkaCD">类型</div>
+    <div class="seg" id="recTypeSeg" data-page-node-id="JiBG4o1grk6kz3wDhrgslT">
+      <button data-v="在家" class="active" data-page-node-id="lq71yvFt2NTTTPHHPvvN6Y">🏠 在家</button>
+      <button data-v="外食" data-page-node-id="hQ44Yv4iDd2Y4i7v1BSB6Q">🍜 外食</button>
     </div>
-    <div class="field-label">备注</div>
-    <input class="field-input" id="recNote" placeholder="吃了什么呀～">
-    <div class="field-label">照片（可选，最多 3 张）</div>
-    <input class="field-input" id="recPhoto" type="file" accept="image/*" multiple>
-    <div class="photo-thumbs" id="recPhotoThumbs"></div>
-    <div class="photo-count-hint" id="recPhotoHint">还可以再添加 3 张</div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeModal('modalRecord')">取消</button>
-      <button class="btn btn-primary" id="recSaveBtn">保存记录</button>
+    <div class="field-label" data-page-node-id="JDXqajSAWgZALdDvsXLdlE">备注</div>
+    <input class="field-input" id="recNote" placeholder="吃了什么呀～" data-page-node-id="f9bQOx4kmgBaojDNxHO52W">
+    <div class="field-label" data-page-node-id="sC1rw23PUtGkmQhu45zTmN">照片（可选，最多 3 张）</div>
+    <input class="field-input" id="recPhoto" type="file" accept="image/*" multiple data-page-node-id="rcn7QdOiNl7iUDpLmpSxFJ">
+    <div class="photo-thumbs" id="recPhotoThumbs" data-page-node-id="tknDMaGFV0Mg0ThYieHabl"></div>
+    <div class="photo-count-hint" id="recPhotoHint" data-page-node-id="QD99T3co3cGWbC3X1PzK7V">还可以再添加 3 张</div>
+    <div class="modal-actions" data-page-node-id="J6lCXirR6czSdBPuVhLKu9">
+      <button class="btn btn-ghost" onclick="closeModal('modalRecord')" data-page-node-id="FZfZY5wnzAiKRhjjatnoKi">取消</button>
+      <button class="btn btn-primary" id="recSaveBtn" data-page-node-id="kE8lTzt40FqtclACV4f1TL">保存记录</button>
     </div>
   </div>
 </div>
 
 <!-- ===== 大图浏览灯箱 ===== -->
-<div class="lb-mask" id="modalLightbox">
-  <button class="lb-close" id="lbClose" aria-label="关闭">✕</button>
-  <img class="lb-img" id="lbImg" alt="记录照片">
-  <div class="lb-meta" id="lbMeta"></div>
-  <div class="lb-bar">
-    <button class="lb-btn" id="lbPrev" aria-label="上一张">‹</button>
-    <span class="lb-count" id="lbCount"></span>
-    <button class="lb-btn" id="lbNext" aria-label="下一张">›</button>
+<div class="lb-mask" id="modalLightbox" data-page-node-id="eOEJHx0OtAW5FmFqE3ZyFD">
+  <button class="lb-close" id="lbClose" aria-label="关闭" data-page-node-id="ywXznuGKmhTvaSRRU9PtTr">✕</button>
+  <img class="lb-img" id="lbImg" alt="记录照片" data-page-node-id="gOT0qQ3BBmadB0brOLOjN1">
+  <div class="lb-meta" id="lbMeta" data-page-node-id="DBAO3qkU6tTquHNkme1kAB"></div>
+  <div class="lb-bar" data-page-node-id="L5M9tMoEtY71OWrpf9nmv7">
+    <button class="lb-btn" id="lbPrev" aria-label="上一张" data-page-node-id="XRraaCatbmx1zo90x8L4zS">‹</button>
+    <span class="lb-count" id="lbCount" data-page-node-id="qeV3mBX91QGRGo6mqV3q5L"></span>
+    <button class="lb-btn" id="lbNext" aria-label="下一张" data-page-node-id="2blB5NodLWMkPnMRZ4Z9Q1">›</button>
   </div>
 </div>
 
 <!-- ===== 弹窗：AI 设置 ===== -->
-<div class="modal-mask" id="modalApi">
-  <div class="modal-box">
-    <p class="modal-title">⚙️ 接口与存储设置</p>
-    <div class="mini-hint">支持任意 OpenAI 兼容接口（如 OpenAI / DeepSeek / Moonshot 等），密钥仅保存在本机浏览器 localStorage 中，不会上传任何服务器。</div>
-    <div class="mini-hint" style="margin-top:6px;color:var(--text-light);">若浏览器提示 Failed to fetch（跨域被拦）：可在下方「代理地址」填入一个代理（如 Cloudflare Worker）；留空则尝试走 Supabase 函数代理（需部署 ai-proxy，且仅对部分接口有效）。</div>
-    <div class="field-label">接口地址 Endpoint</div>
-    <input class="field-input" id="apiEndpoint" placeholder="https://api.openai.com/v1/chat/completions">
-    <div class="field-label">API Key</div>
-    <input class="field-input" id="apiKey" placeholder="sk-xxxxxxxx" type="password">
-    <div class="field-label">模型名称 Model</div>
-    <input class="field-input" id="apiModel" placeholder="gpt-3.5-turbo">
-    <div class="field-label">☁️ 国内云 API 地址（强烈推荐，解决照片裂图 / 同步断开）</div>
-    <input class="field-input" id="jjllApi" placeholder="https://jjll-api-xxxxx.cn-hangzhou.fcapp.run">
-    <div class="field-label">访问口令（若后端设置了 JJLL_TOKEN 才填）</div>
-    <input class="field-input" id="jjllToken" placeholder="留空表示后端未设口令" type="password">
-    <div class="mini-hint" style="margin-top:6px;color:var(--text-light);">
+<div class="modal-mask" id="modalApi" data-page-node-id="MlyyRh6n06VEgub178JR0E">
+  <div class="modal-box" data-page-node-id="aAF01kM0m4QKtjLAgkWGOI">
+    <p class="modal-title" data-page-node-id="QokOiwi8MFV2EOUMnsWpsl">⚙️ 接口与存储设置</p>
+    <div class="mini-hint" data-page-node-id="UavzdxeoOFyyUoJKzvBFd8">支持任意 OpenAI 兼容接口（如 OpenAI / DeepSeek / Moonshot 等），密钥仅保存在本机浏览器 localStorage 中，不会上传任何服务器。</div>
+    <div class="mini-hint" style="margin-top:6px;color:var(--text-light);" data-page-node-id="3WHKWyFjqC6yRcH0OBgorZ">若浏览器提示 Failed to fetch（跨域被拦）：可在下方「代理地址」填入一个代理（如 Cloudflare Worker）；留空则尝试走 Supabase 函数代理（需部署 ai-proxy，且仅对部分接口有效）。</div>
+    <div class="field-label" data-page-node-id="tw5ObrERSqGZJaDtZtFSE2">接口地址 Endpoint</div>
+    <input class="field-input" id="apiEndpoint" placeholder="https://api.openai.com/v1/chat/completions" data-page-node-id="uElLofoFx4zeNg6ht1xa7r">
+    <div class="field-label" data-page-node-id="s8aceGgcfSlsROFoaTYMov">API Key</div>
+    <input class="field-input" id="apiKey" placeholder="sk-xxxxxxxx" type="password" data-page-node-id="cDtBhnWEiHA2alpgtwADgJ">
+    <div class="field-label" data-page-node-id="KoeeJ125S23HzzGO30J77X">模型名称 Model</div>
+    <input class="field-input" id="apiModel" placeholder="gpt-3.5-turbo" data-page-node-id="n0RIfYCbPRNBjsvDeWYoGo">
+    <div class="field-label" data-page-node-id="wNbO0KmybD2mMKhcpdZOOu">☁️ 国内云 API 地址（强烈推荐，解决照片裂图 / 同步断开）</div>
+    <input class="field-input" id="jjllApi" placeholder="https://jjll-api-xxxxx.cn-hangzhou.fcapp.run" data-page-node-id="OBKcVrYpeiOiqh461T1R2C">
+    <div class="field-label" data-page-node-id="6SHN2uiyGwz2F3tNpkd0WO">访问口令（若后端设置了 JJLL_TOKEN 才填）</div>
+    <input class="field-input" id="jjllToken" placeholder="留空表示后端未设口令" type="password" data-page-node-id="VlcFWXx1ETvWEFQbC2UhoV">
+    <div class="mini-hint" style="margin-top:6px;color:var(--text-light);" data-page-node-id="Ul8rBzDbm5egOM2PzA7Aj0">
       supabase.co 在国内很多网络下连不上（实测 TCP 被重置）。填入阿里云函数计算地址后，
       家庭数据与照片全部改走国内节点（OSS 存储，FC 内网写入），手机任何网络都能看图。
       地址会随家庭数据同步，填一次所有设备生效；口令仅存本机。
     </div>
-    <div class="modal-actions" style="margin-top:8px;">
-      <button class="btn btn-ghost" id="cloudMigrateBtn">🚚 迁移照片到国内云</button>
+    <div class="modal-actions" style="margin-top:8px;" data-page-node-id="B8wy6bSqWxDopKnPCKXysu">
+      <button class="btn btn-ghost" id="cloudMigrateBtn" data-page-node-id="1h9pOaLwo5zGL2NfYmFBss">🚚 迁移照片到国内云</button>
     </div>
-    <div class="field-label">代理地址（可选，解决跨域）</div>
-    <input class="field-input" id="apiProxy" placeholder="https://xxx.workers.dev/  或留空走 Supabase 代理">
-    <div class="field-label">🖼️ 图片代理地址（可选，多个用逗号分隔）</div>
-    <input class="field-input" id="photoProxy" placeholder="https://jijilili-photo.xxx.workers.dev">
-    <div class="mini-hint" style="margin-top:6px;color:var(--text-light);">
+    <div class="field-label" data-page-node-id="Sk7a5rWWRWpgwnjLBP0ceq">代理地址（可选，解决跨域）</div>
+    <input class="field-input" id="apiProxy" placeholder="https://xxx.workers.dev/  或留空走 Supabase 代理" data-page-node-id="OIH1js9049zWQf4SvEwsWQ">
+    <div class="field-label" data-page-node-id="QZO3eGxSYbMCDFtkCfI3S0">🖼️ 图片代理地址（可选，多个用逗号分隔）</div>
+    <input class="field-input" id="photoProxy" placeholder="https://jijilili-photo.xxx.workers.dev" data-page-node-id="oSCl6Vgcvrk5r6CsBnOqDp">
+    <div class="mini-hint" style="margin-top:6px;color:var(--text-light);" data-page-node-id="OA4vUxf20PDC9I2TlzKu60">
       照片原图存在 Supabase，部分网络连不上该域名会显示不出来。现在每张照片会额外同步一张小缩略图，
-      <b>只要数据能同步就一定能看到图</b>；网络好时再自动换成高清。填入图片代理后，高清图改走代理加载（更快更稳），
+      <b data-page-node-id="YqnFb8q6aFbu9EiyHZyrBP">只要数据能同步就一定能看到图</b>；网络好时再自动换成高清。填入图片代理后，高清图改走代理加载（更快更稳），
       失败会自动回退直连 → 本机副本。该地址会随家庭数据同步，填一次全家生效。
     </div>
-    <div class="modal-actions" style="margin-top:8px;">
-      <button class="btn btn-ghost" id="photoTestBtn">🔍 图片自检</button>
-      <button class="btn btn-ghost" id="thumbRebuildBtn">🧩 补建缩略图</button>
+    <div class="modal-actions" style="margin-top:8px;" data-page-node-id="AFWovdfjyVDlqarYBJh7vg">
+      <button class="btn btn-ghost" id="photoTestBtn" data-page-node-id="rClTjMSBtdtao2bQOrtUi1">🔍 图片自检</button>
+      <button class="btn btn-ghost" id="thumbRebuildBtn" data-page-node-id="ifYribCoyE0BDH2GEDid1j">🧩 补建缩略图</button>
     </div>
-    <div class="mini-hint" id="photoTestOut" style="margin-top:6px;color:var(--text-light);white-space:pre-wrap;"></div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeModal('modalApi')">取消</button>
-      <button class="btn btn-primary" id="apiSaveBtn">保存设置</button>
+    <div class="mini-hint" id="photoTestOut" style="margin-top:6px;color:var(--text-light);white-space:pre-wrap;" data-page-node-id="9IgMcjixIPHtDLeyryKHFj"></div>
+    <div class="modal-actions" data-page-node-id="6wR5v6T0MTbhhUc62iEEJ1">
+      <button class="btn btn-ghost" onclick="closeModal('modalApi')" data-page-node-id="JD7jamGSkPFVsrDFyf1FnH">取消</button>
+      <button class="btn btn-primary" id="apiSaveBtn" data-page-node-id="64kFgUXEIs7EHOcflppNdf">保存设置</button>
     </div>
   </div>
 </div>
 
 <!-- ===== 弹窗：关于 ===== -->
-<div class="modal-mask" id="modalAbout">
-  <div class="modal-box">
-    <p class="modal-title">ℹ️ 关于「吉吉利利」</p>
-    <div class="mini-hint" style="font-size:13px;line-height:1.9;">
-      · 同一浏览器打开的多个标签页会自动实时同步数据（收纳、待办等）。<br>
-      · 已开启「家庭共享码」后，输入相同家庭码即可在<b>不同设备 / 不同浏览器之间实时同步</b>同一份数据；未设置家庭码时数据仅存本机，换设备请用「导出 / 导入数据」手动搬家。<br>
-      · 手机上可通过浏览器菜单「添加到主屏幕」把它变成一个图标，效果因手机浏览器而略有差异。<br>
+<div class="modal-mask" id="modalAbout" data-page-node-id="Ky0WcgGwFzDVVq8KiKNoiE">
+  <div class="modal-box" data-page-node-id="Hnw83v1Z2sncIDRyBEpqlL">
+    <p class="modal-title" data-page-node-id="mP1Kws67IhTf5fTkLCS0VO">ℹ️ 关于「吉吉利利」</p>
+    <div class="mini-hint" style="font-size:13px;line-height:1.9;" data-page-node-id="59LEJpynbt9K6ddkTpqTFq">
+      · 同一浏览器打开的多个标签页会自动实时同步数据（收纳、待办等）。<br data-page-node-id="85FRzDHS1xcNBoaA0gK6O4">
+      · 已开启「家庭共享码」后，输入相同家庭码即可在<b data-page-node-id="DRfNwd86Epu560mHsxzjgE">不同设备 / 不同浏览器之间实时同步</b>同一份数据；未设置家庭码时数据仅存本机，换设备请用「导出 / 导入数据」手动搬家。<br data-page-node-id="4HiCLn8uUCXhPLPRCVNsSi">
+      · 手机上可通过浏览器菜单「添加到主屏幕」把它变成一个图标，效果因手机浏览器而略有差异。<br data-page-node-id="FYm8jsZygny1GjB4U7wHAF">
       · 电脑上可把该 html 文件拖到桌面，双击即可用浏览器打开；也可为浏览器创建桌面快捷方式指向该文件。
     </div>
-    <div id="aboutCloudRow" class="mini-hint" style="margin-top:10px;padding:10px 12px;border:1px dashed #FFCF9B;background:#FFF6E9;border-radius:12px;font-size:13px;line-height:1.7;color:#8A5A20;">
-      照片在别的网络下显示不出来 / 同步总是断开？点右边按钮配置国内云即可解决。当前状态：<b id="aboutCloudState">检查中…</b>
+    <div id="aboutCloudRow" class="mini-hint" style="margin-top:10px;padding:10px 12px;border:1px dashed #FFCF9B;background:#FFF6E9;border-radius:12px;font-size:13px;line-height:1.7;color:#8A5A20;" data-page-node-id="1AyM7tFYl8BSGaGFdLg8Ok">
+      照片在别的网络下显示不出来 / 同步总是断开？点右边按钮配置国内云即可解决。当前状态：<b id="aboutCloudState" data-page-node-id="XhIp86nY2DCUBO6LsaMNe0">检查中…</b>
     </div>
-    <div class="modal-actions" style="margin-top:12px;justify-content:space-between;">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn btn-primary" id="aboutCloudBtn">☁️ 接口与存储设置</button>
-        <button class="btn btn-soft" id="exportBtn">导出数据</button>
-        <button class="btn btn-soft" id="importBtn">导入数据</button>
-        <button class="btn btn-soft" id="switchFamilyBtn">切换家庭码</button>
-        <input type="file" id="importFile" accept="application/json" style="display:none;">
+    <div class="modal-actions" style="margin-top:12px;justify-content:space-between;" data-page-node-id="YBB1e9wXEZSiygaEBWEbfN">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;" data-page-node-id="AhCLyIUej8ysjKxGLnS30p">
+        <button class="btn btn-primary" id="aboutCloudBtn" data-page-node-id="9BnMlaADBTdzuwNewBREFm">☁️ 接口与存储设置</button>
+        <button class="btn btn-soft" id="exportBtn" data-page-node-id="Z0jCr17MJK4XqF3JBQTSUC">导出数据</button>
+        <button class="btn btn-soft" id="importBtn" data-page-node-id="0GyDHV67JIfHkGH4oPiXc9">导入数据</button>
+        <button class="btn btn-soft" id="switchFamilyBtn" data-page-node-id="0KDQMO6V4iU5T6FCh8RyfZ">切换家庭码</button>
+        <input type="file" id="importFile" accept="application/json" style="display:none;" data-page-node-id="noq8EVGmRx2pCCGFUGQRex">
       </div>
-      <button class="btn btn-primary" onclick="closeModal('modalAbout')">好的</button>
+      <button class="btn btn-primary" onclick="closeModal('modalAbout')" data-page-node-id="rybDCvJPCACi01yWlLz8pK">好的</button>
     </div>
   </div>
 </div>
 
-<div class="modal-mask" id="modalFamily">
-  <div class="modal-box">
-    <p class="modal-title">👨‍👩‍👧 家庭共享码</p>
-    <div class="mini-hint" style="font-size:13px;line-height:1.8;">
-      输入同一个「家庭码」，你和家人就能看到并编辑<b>同一份</b>数据（冰箱、食谱、待办等），改动会自动实时同步。家庭码就是你们的共享钥匙，告诉家人即可一起用。
+<div class="modal-mask" id="modalFamily" data-page-node-id="8u0rvREx7306VvveHKCdAv">
+  <div class="modal-box" data-page-node-id="4vrvPSDUGihcuU4eSxI0qx">
+    <p class="modal-title" data-page-node-id="nPgsLnp6AMlSmv7BcDsyiY">👨‍👩‍👧 家庭共享码</p>
+    <div class="mini-hint" style="font-size:13px;line-height:1.8;" data-page-node-id="GpamkH09DrJD5IH3sOIFv8">
+      输入同一个「家庭码」，你和家人就能看到并编辑<b data-page-node-id="0NPSXLKTiSfYkrfWLADi8j">同一份</b>数据（冰箱、食谱、待办等），改动会自动实时同步。家庭码就是你们的共享钥匙，告诉家人即可一起用。
     </div>
-    <input id="familyCodeInput" placeholder="输入 6 位家庭码" style="margin-top:12px;width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:14px;">
-    <div id="familyCodeHint" class="mini-hint" style="color:var(--danger);font-size:12px;margin-top:6px;"></div>
-    <div class="modal-actions" style="justify-content:space-between;margin-top:14px;">
-      <button class="btn btn-soft" id="familyCreateBtn">随机生成并进入</button>
-      <button class="btn btn-primary" id="familyEnterBtn">进入</button>
+    <input id="familyCodeInput" placeholder="输入 6 位家庭码" style="margin-top:12px;width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:14px;" data-page-node-id="GvNu00EmioHiS7gDRbjEBK">
+    <div id="familyCodeHint" class="mini-hint" style="color:var(--danger);font-size:12px;margin-top:6px;" data-page-node-id="D0uYTPpvkzBFaqczXtXgig"></div>
+    <div class="modal-actions" style="justify-content:space-between;margin-top:14px;" data-page-node-id="9zUE8QzUXNWh9WekdBgUqY">
+      <button class="btn btn-soft" id="familyCreateBtn" data-page-node-id="21Rx928gEnvJoGPNvZYkM3">随机生成并进入</button>
+      <button class="btn btn-primary" id="familyEnterBtn" data-page-node-id="mpJ7vV8fiITRSWcYaF4xcj">进入</button>
     </div>
   </div>
 </div>
