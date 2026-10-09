@@ -43,7 +43,9 @@ function env(k) {
   if (v !== undefined && v !== '') return v;
   return DEFAULTS[k] || '';
 }
-const PORT = process.env.CAPORT || 9000;
+// 阿里云 Web 函数注入的端口环境变量是 PORT；CAPORT 作为自定义别名兜底。
+// 二者都没有时降级到 9000（FC Web 函数默认端口）。
+const PORT = process.env.PORT || process.env.CAPORT || 9000;
 const AK = env('OSS_AK');
 const SK = env('OSS_SK');
 const BUCKET = env('OSS_BUCKET');
