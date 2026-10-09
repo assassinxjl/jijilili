@@ -135,7 +135,80 @@ function parseJSON(buf) {
   try { return JSON.parse(buf.toString('utf8')); } catch (e) { return null; }
 }
 
-/* ---------- 主服务 ---------- */
+/* ---------- 主服务 ----------
+   双模式兼容：
+   1) 事件函数模式（阿里云内置运行时 nodejs18/20，FC 用 bootstrap.mjs 加载，要求导出 handler）
+   2) Web 服务模式（自定义运行时 / 本地 node，代码自己 server.listen）
+   自动判断：本文件被 require 时导出 handler，同时仍然尝试监听端口；
+   监听失败也不影响 handler 正常工作。 */
+function buildResponse(status, obj) {
+  return {
+    statusCode: status,
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+      'Access-Control-Allow-Headers': 'content-type,x-jjll-token',
+      'Access-Control-Max-Age': '86400'
+    },
+    body: JSON.stringify(obj),
+    isBase64Encoded: false
+  };
+}
+
+/* 把 FC 事件对象转成与 http.IncomingMessage 一致的形状，复用下面的同一套路由逻辑 */
+function makeFakeReq(event) {
+  const headers = {};
+  const hs = event.headers || {};
+  Object.keys(hs).forEach((k) => { headers[k.toLowerCase()] = hs[k]; });
+  const queryString = event.queryString || (event.rawQueryString) || '';
+  const path = event.path || event.requestContext && event.requestContext.path || '/';
+  const url = queryString ? (path + '?' + queryString) : path;
+  const bodyBuf = Buffer.from(event.body || '', event.isBase64Encoded ? 'base64' : 'utf8');
+  let done = false;
+  const listeners = {};
+  const req = {
+    method: (event.httpMethod || 'GET').toUpperCase(),
+    url: url,
+    headers: headers,
+    on(ev, fn) { (listeners[ev] = listeners[ev] || []).push(fn); return req; },
+    emit(ev, arg) { (listeners[ev] || []).forEach((f) => f(arg)); }
+  };
+  process.nextTick(() => {
+    if (bodyBuf.length) req.emit('data', bodyBuf);
+    req.emit('end');
+  });
+  req._bodyBuf = bodyBuf;
+  return req;
+}
+
+/* 收集响应（sendJSON 会写入这里） */
+function makeFakeRes(resolve) {
+  const res = {
+    statusCode: 0,
+    _headers: {},
+    setHeader(k, v) { res._headers[k] = v; },
+    end(payload) {
+      resolve(buildResponse(res.statusCode || 200, payload ? safeParse(payload) : null));
+    }
+  };
+  return res;
+}
+function safeParse(s) { try { return JSON.parse(s); } catch (e) { return { ok: false, error: 'bad response' }; } }
+
+/* 阿里云内置运行时（事件函数）入口 */
+exports.handler = function (event, context) {
+  return new Promise((resolve) => {
+    const req = makeFakeReq(event || {});
+    const res = makeFakeRes(resolve);
+    server.emit('request', req, res);
+    setTimeout(() => resolve(buildResponse(504, { ok: false, error: 'handler timeout' })), 40000);
+  });
+};
+/* 部分版本要求 handler.async 或 main，本地 serverless 框架也认这两个别名 */
+exports.main = exports.handler;
+exports.handler.async = function (event, context) { return exports.handler(event, context); };
+
 const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
@@ -246,6 +319,16 @@ const server = http.createServer((req, res) => {
   return sendJSON(res, 404, { ok: false, error: 'not found' });
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log('jijilili-backend listening on ' + PORT);
-});
+/* 尝试以独立 Web 服务方式监听端口（自定义运行时 / 本地 node 场景）。
+   在内置运行时的事件函数模式下，端口可能被平台占用而监听失败——这没关系，
+   平台会直接调用上面导出的 handler，所以捕获错误、不让进程崩掉。 */
+try {
+  server.on('error', (e) => {
+    console.log('listen failed (ignored in handler mode): ' + e.message);
+  });
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log('jijilili-backend listening on ' + PORT);
+  });
+} catch (e) {
+  console.log('listen skipped (handler mode): ' + e.message);
+}
