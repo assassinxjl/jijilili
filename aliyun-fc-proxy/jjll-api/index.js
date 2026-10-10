@@ -94,7 +94,9 @@ function oss(method, key, body, contentType) {
       }
     );
     req.on('error', reject);
-    req.setTimeout(30000, () => { req.destroy(); reject(new Error('oss timeout')); });
+    // FC 默认函数超时只有 3 秒，这里必须比它短，否则报错来自 FC 网关而不是我们自己的提示。
+    // 调大函数超时时间（建议 60 秒）后可以再放宽。
+    req.setTimeout(Number(process.env.OSS_TIMEOUT_MS) || 8000, () => { req.destroy(); reject(new Error('oss timeout')); });
     if (body) req.write(body);
     req.end();
   });
@@ -199,10 +201,22 @@ function safeParse(s) { try { return JSON.parse(s); } catch (e) { return { ok: f
 /* 阿里云内置运行时（事件函数）入口 */
 exports.handler = function (event, context) {
   return new Promise((resolve) => {
-    const req = makeFakeReq(event || {});
-    const res = makeFakeRes(resolve);
-    server.emit('request', req, res);
-    setTimeout(() => resolve(buildResponse(504, { ok: false, error: 'handler timeout' })), 40000);
+    let settled = false;
+    /* 必须在超时前清掉定时器，否则残留的 timer 会让实例迟迟不退出 */
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      resolve(buildResponse(504, { ok: false, error: 'handler timeout（请把函数「超时时间」调到 60 秒以上）' }));
+    }, 25000);
+    function done(r) { if (settled) return; settled = true; clearTimeout(timer); resolve(r); }
+
+    try {
+      const req = makeFakeReq(event || {});
+      const res = makeFakeRes(done);
+      server.emit('request', req, res);
+    } catch (e) {
+      done(buildResponse(500, { ok: false, error: 'handler error: ' + e.message }));
+    }
   });
 };
 /* 部分版本要求 handler.async 或 main，本地 serverless 框架也认这两个别名 */
@@ -224,6 +238,16 @@ const server = http.createServer((req, res) => {
     const p = kv.split('=');
     query[decodeURIComponent(p[0])] = decodeURIComponent((p[1] || '').replace(/\+/g, ' '));
   });
+
+  /* 快速自检：不去连 OSS，纯粹确认「代码跑起来了 + 环境变量读到了」。
+     必须放在所有 OSS 访问之前，因为 FC 默认超时只有 3 秒，连 OSS 可能来不及返回。 */
+  if (pathname === '/ping') {
+    return sendJSON(res, 200, {
+      ok: true, pong: true, service: 'jijilili-backend',
+      runtime: 'fc-handler', bucket: BUCKET, publicBase: PUBLIC_BASE,
+      config: configReport(), time: new Date().toISOString()
+    });
+  }
 
   if (!BUCKET || !AK || !SK) {
     return sendJSON(res, 500, { ok: false, error: 'OSS 环境变量未配置（OSS_AK/OSS_SK/OSS_BUCKET）' });
