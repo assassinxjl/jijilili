@@ -870,27 +870,59 @@ function ossPoll(){
       if(res && res.ts && res.ts > lastSeenTs) ossSyncLoad(function(){ renderAll(); });
     }).catch(function(){});
 }
-/* 照片上传：前端 → FC（国内直连）→ OSS 内网写入，返回 OSS 公开读地址（浏览器直连显示，不走 FC 转流量） */
-function ossUploadPhoto(dataUrl){
+/* 照片上传：前端 → FC（国内直连）→ OSS 内网写入，返回 OSS 公开读地址（浏览器直连显示，不走 FC 转流量）
+   带重试与超时：手机 4G/弱网下上传一张图常需 10~20 秒，默认 fetch 无超时、
+   网络抖动时直接抛 "Failed to fetch"，用户只看到"连接失败"。
+   这里明确区分「网络层失败」与「后端返回错误」，并对网络失败自动重试 2 次（指数退避）。 */
+function ossUploadPhotoOnce(dataUrl, timeoutMs){
   var name = 'photos/' + photoName();
-  return fetch(ossUrl('/upload', { code: getFamilyCode() || 'public', name: name }), {
+  var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  var timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, timeoutMs || 45000) : null;
+  var opts = {
     method: 'POST',
     headers: ossHeaders({ 'Content-Type': 'image/jpeg' }),
     body: dataUrlToBlob(dataUrl)
-  }).then(function(r){
-    return r.text().then(function(t){
-      var j = null;
-      try{ j = JSON.parse(t); }catch(e){}
-      if(!r.ok || !j || !j.ok){
-        // 后端把错误放在 json 里，尽量把真实原因带出去，便于定位
-        var msg = (j && (j.error || j.message)) || ('HTTP ' + r.status) + (t ? ('：' + t.slice(0, 120)) : '');
-        throw new Error(msg);
+  };
+  if(ctrl) opts.signal = ctrl.signal;
+  return fetch(ossUrl('/upload', { code: getFamilyCode() || 'public', name: name }), opts)
+    .then(function(r){
+      return r.text().then(function(t){
+        var j = null;
+        try{ j = JSON.parse(t); }catch(e){}
+        if(!r.ok || !j || !j.ok){
+          // 后端把错误放在 json 里，尽量把真实原因带出去，便于定位
+          var msg = (j && (j.error || j.message)) || ('HTTP ' + r.status) + (t ? ('：' + t.slice(0, 120)) : '');
+          throw new Error(msg);
+        }
+        return j;
+      });
+    }).then(function(j){
+      if(!j.url) throw new Error('后端未返回图片地址');
+      return j.url;
+    }).catch(function(e){
+      if(timer) clearTimeout(timer);
+      if(ctrl && e && e.name === 'AbortError') throw new Error('上传超时（' + Math.round((timeoutMs||45000)/1000) + '秒无响应），网络可能太慢');
+      /* fetch 抛出的 TypeError: Failed to fetch 是网络层失败（连不上/中途断开/CORS），
+         这类值得重试；后端已明确返回的业务错误则不重试。 */
+      var msg = (e && e.message) || String(e);
+      if(/Failed to fetch|NetworkError|load failed/i.test(msg)){
+        var err = new Error('连不上后端（网络请求失败）：' + msg);
+        err.netFail = true;
+        throw err;
       }
-      return j;
+      throw e;
     });
-  }).then(function(j){
-    if(!j.url) throw new Error('后端未返回图片地址');
-    return j.url;
+}
+function ossUploadPhoto(dataUrl, attempt){
+  attempt = attempt || 0;
+  return ossUploadPhotoOnce(dataUrl).catch(function(e){
+    /* 只对网络层失败重试，最多 3 次，退避 1s/3s */
+    if(e && e.netFail && attempt < 2){
+      var wait = (attempt === 0 ? 1000 : 3000);
+      return new Promise(function(rs){ setTimeout(rs, wait); })
+        .then(function(){ return ossUploadPhoto(dataUrl, attempt + 1); });
+    }
+    throw e;
   });
 }
 var OSS_PUBLIC_BASE = '';
@@ -1191,9 +1223,34 @@ function sbUploadPhoto(dataUrl){
    原图放在 Supabase Storage，而 supabase.co 在部分网络（尤其手机流量/公司网）连不上，
    于是别的设备只能看到裂图。解决办法：每张照片额外生成一张约 10KB 的小缩略图，
    随 state 一起同步。只要设备能同步到数据，就一定能先看到缩略图；网络好时再换成高清原图。 */
-var THUMB_MAX = 240;        // 缩略图最长边
-var THUMB_QUALITY = 0.5;
+/* 缩略图体积上限（决定会不会撑爆 localStorage）：
+   手机端 localStorage 通常只有 5MB，而 base64 比原体积大 33%。
+   150 张 × 10KB ≈ 1.5MB 看似安全，但家庭数据本身也要占空间，
+   手机上还可能有其他站点数据共用配额，所以这里主动压低并让 THUMB_LIMIT 可动态收缩。 */
+var THUMB_MAX = 200;        // 缩略图最长边
+var THUMB_QUALITY = 0.45;
 var THUMB_LIMIT = 150;      // 最多保留多少张缩略图（防止本地存储膨胀）
+/* 缩略图总体积上限（base64 字符数）。150 张按 10KB 算约 1.5MB，
+   但手机端 localStorage 只有 5MB，还要留给家庭数据本身，所以再卡一道总量闸：
+   超过 THUMB_BYTES 就丢最老的缩略图。实测这是手机端「保存失败」的主因。 */
+var THUMB_BYTES = 700 * 1024;
+function thumbBytes(){
+  if(!state || !state.photoThumbs) return 0;
+  var n = 0;
+  var ks = Object.keys(state.photoThumbs);
+  for(var i=0; i<ks.length; i++) n += (state.photoThumbs[ks[i]] || '').length;
+  return n;
+}
+/* 缩略图瘦身：超数量或超体积就丢最老的一半。
+   对象键的插入顺序即写入顺序，前面的最老。 */
+function trimThumbs(){
+  if(!state || !state.photoThumbs) return;
+  var ks = Object.keys(state.photoThumbs);
+  var over = ks.length > THUMB_LIMIT || thumbBytes() > THUMB_BYTES;
+  if(!over) return;
+  var drop = Math.max(1, Math.ceil(ks.length / 2));
+  for(var i=0; i<drop; i++) delete state.photoThumbs[ks[i]];
+}
 function makeThumb(dataUrl){
   return new Promise(function(resolve){
     if(!isDataUrl(dataUrl)) return resolve('');
@@ -1219,10 +1276,7 @@ function noteThumb(ref, thumb){
   if(!state.photoThumbs) state.photoThumbs = {};
   if(state.photoThumbs[ref] === thumb) return;
   state.photoThumbs[ref] = thumb;
-  var ks = Object.keys(state.photoThumbs);
-  if(ks.length > THUMB_LIMIT){   // 超限：丢掉最早写入的一半
-    ks.slice(0, Math.ceil(ks.length/2)).forEach(function(k){ delete state.photoThumbs[k]; });
-  }
+  trimThumbs();                // 数量或体积超限就丢最老的一半
   _thumbDirty = true;
   if(_thumbTimer) return;
   _thumbTimer = setTimeout(function(){        // 批量补齐后统一存一次，避免频繁写盘
@@ -1467,11 +1521,35 @@ function migratePhotosOutOfStorage(){
 }
 
 var suppressBroadcast = false;
-function saveState(){
+/* localStorage 写满时不要只弹窗——那是死路，用户除了「清理照片」没别的办法，
+   而清照片会丢数据。这里改成「自动瘦身重试」：
+   依次丢掉 photoThumbs 里最老的一半（缩略图是可以重建的，丢了只是暂时看不清图，
+   联网后点「补建缩略图」即可恢复），再试写入；仍失败才提示用户。 */
+var _saveFailNotified = false;
+function writeStateRetry(attempt){
+  var txt;
+  try{ txt = JSON.stringify(state); }
+  catch(e){ return false; }
   try{
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(STORAGE_KEY, txt);
+    return true;
   }catch(e){
-    alert('保存失败：浏览器本地存储写不下了。建议到「设置 → 数据管理」先导出备份，然后清理部分旧照片记录再试。');
+    if(attempt >= 4 || !state.photoThumbs) return false;
+    var ks = Object.keys(state.photoThumbs);
+    if(!ks.length) return false;
+    /* 丢一半（至少1张），保留最近写入的那些——对象键顺序即写入顺序 */
+    var drop = Math.max(1, Math.ceil(ks.length / 2));
+    for(var i=0; i<drop; i++) delete state.photoThumbs[ks[i]];
+    return writeStateRetry(attempt + 1);
+  }
+}
+function saveState(){
+  if(!writeStateRetry(0)){
+    if(!_saveFailNotified){
+      _saveFailNotified = true;
+      setTimeout(function(){ _saveFailNotified = false; }, 8000);   // 8秒内不重复弹窗
+      alert('保存失败：本机存储空间不足。已自动清理部分缩略图腾出空间，但家庭数据仍可能写不下。\n建议到「设置 → 数据管理」先导出备份，再删除一些不再需要的记录。');
+    }
     return;
   }
   syncSave();
@@ -2169,6 +2247,40 @@ function fetchImageData(url){
       });
     }).catch(function(){ return ''; });
 }
+/* 跨域友好的取图：<img> 加载 + canvas 重绘。
+   为什么需要：fetch 跨域要求服务端带 CORS 头，而 Supabase Storage / 各类图床
+   常常只允许 <img> 直接显示、不给 CORS 头——此时页面上图看得见，
+   但 fetch 会失败，于是「迁移照片」就报"连不上 Supabase"，其实图就在那儿。
+   注意：<img> 不加 crossOrigin 时画出来的 canvas 是 tainted，toDataURL 会抛安全错误，
+   所以这里两条路都试：先试 fetch（能拿到原图），失败再试 <img>+crossOrigin。 */
+function fetchImageDataViaImg(url){
+  return new Promise(function(resolve){
+    var img = new Image();
+    /* 匿名 CORS 请求：服务端若允许则可读像素画到 canvas 拿到原图数据 */
+    img.crossOrigin = 'anonymous';
+    var settled = false;
+    function fin(v){ if(settled) return; settled = true; resolve(v); }
+    img.onload = function(){
+      try{
+        if(!img.naturalWidth){ fin(''); return; }
+        var c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        c.getContext('2d').drawImage(img, 0, 0);
+        fin(c.toDataURL('image/jpeg', 0.92));   // 若 tainted 会抛错，被 catch 兜住
+      }catch(e){ fin(''); }
+    };
+    img.onerror = function(){ fin(''); };
+    setTimeout(function(){ fin(''); }, 15000);
+    img.src = url;
+  });
+}
+/* 取原图的统一入口：fetch 优先（无跨域污染、保留原格式），失败再用 <img>+canvas 兜底 */
+function fetchImageDataAny(url){
+  return fetchImageData(url).then(function(d){
+    if(d) return d;
+    return fetchImageDataViaImg(url);
+  });
+}
 function rebuildThumbs(){
   var out = document.getElementById('photoTestOut');
   var refs = [];
@@ -2182,7 +2294,7 @@ function rebuildThumbs(){
   flush();
   todo.forEach(function(ref){
     var src = isIdbRef(ref) ? idbGet(ref.slice(4))
-                            : getLocalCopy(ref).then(function(d){ return d || fetchImageData(ref); });
+                            : getLocalCopy(ref).then(function(d){ return d || fetchImageDataAny(ref); });
     src.then(function(d){
       if(!d) return;
       return makeThumb(d).then(function(t){ if(t){ noteThumb(ref, t); ok++; } });
@@ -2205,14 +2317,15 @@ document.getElementById('thumbRebuildBtn').addEventListener('click', rebuildThum
      1) 本机 IndexedDB 原图副本   2) 趁网络能连通，直接从原地址把原图拉下来
      3) 走图片代理拉原图          4) 缩略图（最后一档，画质降级但至少能显示） */
 function photoSourceData(ref){
-  if(isIdbRef(ref)) return idbGet(ref.slice(4));
+  if(isIdbRef(ref)) return idbGet(ref.slice(4)).then(function(d){ return d || thumbOf(ref) || ''; });
   if(!isHttpUrl(ref)) return Promise.resolve(ref);          // dataUrl 直接用
   return getLocalCopy(ref).then(function(d){
     if(d) return d;
-    return fetchImageData(ref).then(function(x){
+    /* 逐个通道试：直连 → fetchImageDataAny（内部先fetch再img+canvas）→ 代理 → 缩略图 */
+    return fetchImageDataAny(ref).then(function(x){
       if(x) return x;
       var px = viaProxy(ref);
-      if(px !== ref) return fetchImageData(px);
+      if(px !== ref) return fetchImageDataAny(px);
       return '';
     });
   }).then(function(d){
@@ -2227,6 +2340,24 @@ function migratePhotosToCloud(){
     if(out) out.textContent = '请先填写上方「国内云 API 地址」并点保存。';
     return;
   }
+  /* 迁移前先自检后端连通性：手机端「全部失败」时，第一时间就能分清
+     是「这台设备连不上后端」还是「照片本身拿不到」，不至于逐张白跑一遍。 */
+  out && (out.textContent = '正在检测后端连通性…');
+  fetch(ossUrl('/info'), { headers: ossHeaders(), cache: 'no-store' })
+    .then(function(r){ return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
+    .catch(function(e){
+      if(out) out.textContent = '✗ 连不上后端，已中止迁移（未改动任何照片）。\n'
+        + '地址：' + apiBase() + '\n原因：' + ((e && e.message) || e)
+        + '\n\n请检查：①手机是否开着数据/Wi-Fi；②该地址是否填错；'
+        + '③在手机浏览器里直接打开该地址看能否返回 JSON。';
+      return null;
+    })
+    .then(function(okInfo){
+      if(!okInfo) return;
+      doMigratePhotos(out);
+    });
+}
+function doMigratePhotos(out){
   var refs = [];
   (state.recipeRecords || []).forEach(function(r){
     (r.photos || []).forEach(function(p){ if(p && refs.indexOf(p) < 0) refs.push(p); });
@@ -2236,7 +2367,12 @@ function migratePhotosToCloud(){
   if(!todo.length){ if(out) out.textContent = '所有照片都已在国內云上 ✓'; return; }
   var done = 0, ok = 0, fail = 0, lowQ = 0, noData = 0;
   var firstErr = '';
-  function flush(){ if(out) out.textContent = '迁移中… ' + done + '/' + todo.length + '（成功 ' + ok + '，降级 ' + lowQ + '，失败 ' + fail + '）'; }
+  var _hint = '';
+  function flush(){
+    if(!out) return;
+    out.textContent = '迁移中… ' + done + '/' + todo.length +
+      '（成功 ' + ok + '，降级 ' + lowQ + '，失败 ' + fail + '）' + (_hint ? ('　' + _hint) : '');
+  }
   flush();
   /* 串行处理：一张拉完再下一张，避免几十张图并发把网络/函数压垮 */
   var idx = 0;
@@ -2245,8 +2381,10 @@ function migratePhotosToCloud(){
       var msg = '迁移完成：成功 ' + ok + ' 张';
       if(lowQ) msg += '（其中 ' + lowQ + ' 张只有缩略图，画质较低）';
       if(fail) msg += '，失败 ' + fail + ' 张';
-      if(fail) msg += '。首个失败原因：' + (firstErr || '未知') + (noData ? ('　其中 ' + noData + ' 张在本机找不到原始数据（既没有本机副本，也连不上 Supabase）') : '');
-      else msg += '。' + (ok ? '已写入本地，正在同步到云端…' : '');
+      if(fail) msg += '。首个失败原因：' + (firstErr || '未知');
+      if(noData) msg += '　另有 ' + noData + ' 张本机既无原图副本、也拉不到原图：';
+      if(noData) msg += noDataHint();
+      if(!fail && ok) msg += '。已写入本地，正在同步到云端…';
       if(out) out.textContent = msg;
       if(ok) saveState();
       return;
@@ -2254,7 +2392,10 @@ function migratePhotosToCloud(){
     var ref = todo[idx++];
     photoSourceData(ref).then(function(d){
       if(d && isDataUrl(d) && d === thumbOf(ref)) lowQ++;   // 只剩缩略图可用，属降级迁移
-      if(!d || !isDataUrl(d)){ noData++; throw new Error('本机没有这张照片的原始数据，且当前网络连不上 Supabase'); }
+      if(!d || !isDataUrl(d)){
+        noData++;
+        throw new Error('本机没有原图副本，且当前网络也拉不到原图（不是浏览器坏了，是源站不可达）');
+      }
       return ossUploadPhoto(d).then(function(url){
         var th = thumbOf(ref);
         (state.recipeRecords || []).forEach(function(r){
@@ -2265,6 +2406,7 @@ function migratePhotosToCloud(){
         });
         if(th) noteThumb(url, th);
         cachePhotoLocally(url, d);
+        _hint = '';
       });
     }).then(function(){
       ok++; done++; flush(); step();
@@ -2273,6 +2415,14 @@ function migratePhotosToCloud(){
       if(!firstErr) firstErr = (e && (e.message || e.error)) || String(e);
       flush(); step();
     });
+  }
+  /* 拉不到原图时的可执行建议——区分「本机能做的」和「必须换设备做的」 */
+  function noDataHint(){
+    return (window.innerWidth <= 820 || /Mobi|Android|iPhone/i.test(navigator.userAgent))
+      ? '手机端本机没有这些照片的原图副本，且手机网络访问图片源站常被限制。'
+        + '请在「能正常显示这些照片的电脑」上做一次迁移，迁移完成后会自动同步到手机。'
+      : '建议：①点「补建缩略图」先把缩略图备上（之后至少能看清）；'
+        + '②在「设置 → 图片代理地址」填一个能访问图片源站的代理，再重试迁移。';
   }
   step();
 }
@@ -2295,7 +2445,7 @@ function autoRebuildThumbs(limit){
     if(idx >= refs.length) return;
     var ref = refs[idx++];
     var src = isIdbRef(ref) ? idbGet(ref.slice(4))
-                            : getLocalCopy(ref).then(function(d){ return d || fetchImageData(ref); });
+                            : getLocalCopy(ref).then(function(d){ return d || fetchImageDataAny(ref); });
     src.then(function(d){
       if(d) return makeThumb(d).then(function(t){ if(t) noteThumb(ref, t); });
     }).then(next, next);
