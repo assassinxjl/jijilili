@@ -57,7 +57,7 @@ const MAX_UPLOAD = 15 * 1024 * 1024;
 
 /* 每次改动代码都把 BUILD 改掉，这样打开根地址就能一眼确认「线上跑的是不是这一版」。
    排查部署时非常好用：返回的 buildId 对不上，说明代码包没真正生效。 */
-const BUILD_ID = 'v6-queryparams-20261010-1120';
+const BUILD_ID = 'v7-imgproxy-20261010-1230';
 
 /* 配置项来源，用于自检时一眼看出哪些没配上 */
 function configReport() {
@@ -102,6 +102,30 @@ function oss(method, key, body, contentType) {
     // 调大函数超时时间（建议 60 秒）后可以再放宽。
     req.setTimeout(Number(process.env.OSS_TIMEOUT_MS) || 8000, () => { req.destroy(); reject(new Error('oss timeout')); });
     if (body) req.write(body);
+    req.end();
+  });
+}
+
+/* ---------- 通用服务端取图（中转用）：绕过浏览器 CORS / 国内连不上 supabase 的问题 ----------
+   为什么需要：浏览器能「显示」Supabase 图片（<img> 不需要 CORS），但应用要把字节取出来
+   迁移到 OSS 时必须走 fetch / canvas，这两者都要求源站返回 Access-Control-Allow-Origin。
+   国内网络连 supabase.co 常被 GFW 把 Cloudflare 的 IP TCP reset，于是「应用拉不到图、
+   但浏览器直接打开网址能看到」。这里在服务端把图取回来，再带宽松 CORS 头返给前端。
+   仅允许回源 supabase（co / in），避免被当成开放代理滥用。 */
+function proxyFetch(targetUrl) {
+  return new Promise((resolve, reject) => {
+    let u;
+    try { u = new URL(targetUrl); } catch (e) { return reject(new Error('bad url')); }
+    const req = https.request(
+      { method: 'GET', hostname: u.hostname, path: u.pathname + u.search, headers: { 'User-Agent': 'jijilili-backend' } },
+      (r) => {
+        const chunks = [];
+        r.on('data', (c) => chunks.push(c));
+        r.on('end', () => resolve({ status: r.statusCode, type: r.headers['content-type'] || 'image/jpeg', buf: Buffer.concat(chunks) }));
+      }
+    );
+    req.on('error', reject);
+    req.setTimeout(Number(process.env.OSS_TIMEOUT_MS) || 8000, () => { req.destroy(); reject(new Error('upstream timeout')); });
     req.end();
   });
 }
@@ -166,7 +190,7 @@ function buildResponse(status, obj) {
    注意：不同触发器类型下 event.path 的形态不一致，可能是 "/upload"，
    也可能是完整 URL "https://xxx.fcapp.run/upload?code=a"，
    还有的带在 requestContext.http.path。这里逐个回退，保证 pathname 一定是纯路径。 */
-const KNOWN_ROUTES = ['/upload', '/state', '/info', '/ping', '/diag'];
+const KNOWN_ROUTES = ['/upload', '/state', '/info', '/ping', '/diag', '/img'];
 function normalizePath(raw) {
   let p = String(raw || '').trim();
   if (!p) return '';
@@ -584,6 +608,25 @@ const server = http.createServer((req, res) => {
   /* 公开读域名 */
   if (pathname === '/info') {
     return sendJSON(res, 200, { ok: true, buildId: BUILD_ID, publicBase: PUBLIC_BASE, bucket: BUCKET });
+  }
+
+  /* 图片中转：?u=<encodeURIComponent(supabase url)> → 服务端取回 + 带 CORS 头返回。
+     解决「浏览器能显示 Supabase 图、但应用取不到字节去迁移」的问题。
+     仅允许回源 supabase（co/in），防止被当开放代理。 */
+  if (pathname === '/img') {
+    let target = String(query.u || '');
+    try { target = decodeURIComponent(target); } catch (e) { target = ''; }
+    const m = String(target).match(/^https:\/\/[^\/]+\.(supabase\.co|supabase\.in)(\/.*)$/i);
+    if (!m) return sendJSON(res, 400, { ok: false, error: '仅允许回源 supabase（co/in），且不接受其它协议/主机' });
+    return proxyFetch(target).then((r) => {
+      res.statusCode = r.status;
+      res.setHeader('Content-Type', r.type);
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', '*');
+      res.setHeader('Cache-Control', 'public, max-age=2592000');
+      res.end(r.buf);
+    }).catch((e) => sendJSON(res, 502, { ok: false, error: 'upstream: ' + e.message }));
   }
 
   const code = safeCode(query.code);

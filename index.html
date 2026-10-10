@@ -676,6 +676,10 @@ var currentChannel = null;   // 复用作轮询定时器
 var lastSeenTs = 0;
 var justSynced = 0;
 var syncTimer = null;
+/* 云端同步成败可视化：以前写入失败被 catch 静默吞掉，用户改完数据看不出「到底同步没有」，
+   只会觉得"另一台设备没更新"。这里记下最近一次成功/失败，在「关于 & 数据」里直接显示。 */
+var syncLastOk = 0;      // 上次成功写入云端的时间戳（0=从未成功）
+var syncFailMsg = '';    // 最近一次写入失败的原因（空=无失败）
 
 function getFamilyCode(){ try{ return localStorage.getItem(FAMILYCODE_KEY) || ''; }catch(e){ return ''; } }
 function setFamilyCode(code){ try{ localStorage.setItem(FAMILYCODE_KEY, code); }catch(e){} }
@@ -821,6 +825,8 @@ function ossPut(code, data, baseTs){
 function ossSyncSave(){
   var code = getFamilyCode();
   var attempt = 0;
+  function markOk(){ syncLastOk = Date.now(); syncFailMsg = ''; refreshAboutCloudState(); return true; }
+  function markFail(msg){ syncFailMsg = String(msg || '未知原因'); refreshAboutCloudState(); return false; }
   function tryOnce(){
     attempt++;
     try{
@@ -834,12 +840,18 @@ function ossSyncSave(){
         // 与现有实现一致：按 id 并集 + LWW 合并后再写，CAS(ts) 失败则重读重试
         var merged = mergeState(dataToSync, base);
         return ossPut(code, merged, baseTs).then(function(r){
-          if(r && r.ok){ if(r.ts) lastSeenTs = r.ts; return true; }
+          if(r && r.ok){ if(r.ts) lastSeenTs = r.ts; return markOk(); }
           if(attempt < 4) return tryOnce();
-          return false;
+          return markFail((r && r.error) || (r && r.conflict ? '并发冲突，重试 4 次仍未写入' : '后端拒绝写入'));
         });
-      }).catch(function(){ if(attempt < 4) return tryOnce(); });
-    }catch(e){ if(attempt < 4) return tryOnce(); }
+      }).catch(function(e){
+        if(attempt < 4) return tryOnce();
+        return markFail('连不上后端：' + ((e && e.message) || e));
+      });
+    }catch(e){
+      if(attempt < 4) return tryOnce();
+      return markFail('本地异常：' + e.message);
+    }
   }
   return tryOnce();
 }
@@ -1361,15 +1373,35 @@ function viaProxy(url){
   if(!m) return url;
   return ps[0] + '/' + m[1];
 }
-/* 候选通道列表：代理（可多个）与直连；上次哪个成功就排前面 */
+/* 图片中转候选：把「浏览器能显示、但应用取不到字节」的 Supabase 图，
+   经 CORS 友好的中转取回。两个来源：
+     ① 本项目已在用的 OSS 后端 jjll-api 的 /img 端点（useOss 时自动启用，无需额外部署）
+     ② 用户在「图片代理地址」里填的代理（推荐 Cloudflare Worker，国内回源 Supabase 最稳）
+   注意：中转解决的是「取字节」问题——直连 <img> 能显示不代表 fetch 能拿到字节。 */
+function imgRelays(ref){
+  var out = [];
+  if(useOss()){
+    out.push(ossUrl('/img', { u: encodeURIComponent(ref) }));
+  }
+  var m = String(ref || '').match(/\/storage\/v1\/object\/public\/(.+)$/);
+  if(m){
+    proxyList().forEach(function(p){ out.push(p + '/' + m[1]); });
+  }
+  return out;
+}
+/* 候选通道列表：直连优先（网络可达时最快），中转兜底（解决「能显示却取不到字节」）。
+   上次哪个成功就把它排前面，避免每张图都干等超时。 */
 function buildCandidates(ref){
   if(!isHttpUrl(ref)) return [];
   var m = String(ref).match(/\/storage\/v1\/object\/public\/(.+)$/);
   if(!m) return [{ k:'direct', url: ref }];      // 非 Supabase 地址（如 OSS 直连）就直接取，无需代理
-  var tail = m[1];
-  var proxies = proxyList().map(function(p){ return { k:'proxy', url: p + '/' + tail }; });
+  var relays = imgRelays(ref).map(function(u){ return { k:'proxy', url: u }; });
   var direct = [{ k:'direct', url: ref }];
-  return (photoChan() === 'direct') ? direct.concat(proxies) : proxies.concat(direct);
+  /* 记忆上次成功通道：上次直连成功 → 直连优先；上次靠中转 → 中转优先 */
+  if(photoChan() === 'direct') return direct.concat(relays);
+  if(photoChan() === 'proxy')  return relays.concat(direct);
+  /* 首次：直连优先（用户网络通常能显示），失败再走中转兜底 */
+  return direct.concat(relays);
 }
 /* 本机副本：以图片 URL 为 key 存一份 base64，断网/换网络时兜底 */
 function cachePhotoLocally(url, dataUrl){
@@ -2237,7 +2269,7 @@ document.getElementById('photoTestBtn').addEventListener('click', photoSelfTest)
 /* ---- 补建缩略图：给还没有缩略图的老照片补一张，补完同步给其它设备 ---- */
 function fetchImageData(url){
   return fetch(url, { mode:'cors', cache:'force-cache' })
-    .then(function(r){ return r.blob(); })
+    .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
     .then(function(b){
       return new Promise(function(res, rej){
         var fr = new FileReader();
@@ -2321,12 +2353,18 @@ function photoSourceData(ref){
   if(!isHttpUrl(ref)) return Promise.resolve(ref);          // dataUrl 直接用
   return getLocalCopy(ref).then(function(d){
     if(d) return d;
-    /* 逐个通道试：直连 → fetchImageDataAny（内部先fetch再img+canvas）→ 代理 → 缩略图 */
+    /* 逐个通道试：直连 → fetchImageDataAny（内部先fetch再img+canvas）→ 中转（jjll-api /img 或用户图片代理）→ 缩略图 */
     return fetchImageDataAny(ref).then(function(x){
       if(x) return x;
-      var px = viaProxy(ref);
-      if(px !== ref) return fetchImageDataAny(px);
-      return '';
+      var relays = imgRelays(ref);
+      function tryRelay(i){
+        if(i >= relays.length) return Promise.resolve('');
+        return fetchImageDataAny(relays[i]).then(function(y){
+          if(y) return y;
+          return tryRelay(i + 1);
+        });
+      }
+      return tryRelay(0);
     });
   }).then(function(d){
     if(d) return d;
@@ -2830,7 +2868,24 @@ function renderCloudTip(){
 function refreshAboutCloudState(){
   var el = document.getElementById('aboutCloudState');
   if(!el) return;
-  el.textContent = state.jjllApi ? ('已启用国内云（' + state.jjllApi + '）') : '未配置，当前走 Supabase（国内常连不上）';
+  /* 未配国内云 → 明确警告：这台设备走的是 Supabase，国内常连不上，所以改动同步不到其它设备。
+     这是「手机改了、电脑没同步」最常见的原因，必须一眼看出来。 */
+  if(!state.jjllApi){
+    el.innerHTML = '未配置，当前走 Supabase（国内常连不上）'
+      + '<br><span style="color:#B23B3B;font-weight:600;">⚠️ 这台设备的改动无法同步给其它设备。'
+      + '请在下面「☁️ 接口与存储设置」里填写「国内云 API 地址」并保存。</span>';
+    return;
+  }
+  var base = '已启用国内云（' + state.jjllApi + '）';
+  var syncTxt;
+  if(syncFailMsg){
+    syncTxt = '<span style="color:#B23B3B;font-weight:600;">✗ 上次同步到云端失败：' + esc(syncFailMsg) + '</span>';
+  }else if(syncLastOk){
+    syncTxt = '✓ 上次同步成功：' + new Date(syncLastOk).toLocaleTimeString();
+  }else{
+    syncTxt = '尚未同步过（改动保存后会自动上传）';
+  }
+  el.innerHTML = base + '<br>' + syncTxt;
 }
 document.getElementById('aboutBtn').addEventListener('click', function(){
   refreshAboutCloudState();
