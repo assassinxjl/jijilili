@@ -552,7 +552,9 @@
     </div>
     <div class="modal-actions" style="margin-top:8px;" data-page-node-id="B8wy6bSqWxDopKnPCKXysu">
       <button class="btn btn-ghost" id="cloudMigrateBtn" data-page-node-id="1h9pOaLwo5zGL2NfYmFBss">🚚 迁移照片到国内云</button>
+      <button class="btn btn-ghost" id="cloudTestBtn" data-page-node-id="Zx8Kq2TbNcVmLpRd4sWfA7">🌐 云端连通自检</button>
     </div>
+    <div class="mini-hint" id="cloudTestOut" style="margin-top:6px;color:var(--text-light);white-space:pre-wrap;font-size:12px;" data-page-node-id="Hq3NvBzTkY7WmEc9RuXpLd"></div>
     <div class="field-label" data-page-node-id="Sk7a5rWWRWpgwnjLBP0ceq">代理地址（可选，解决跨域）</div>
     <input class="field-input" id="apiProxy" placeholder="https://xxx.workers.dev/  或留空走 Supabase 代理" data-page-node-id="OIH1js9049zWQf4SvEwsWQ">
     <div class="field-label" data-page-node-id="QZO3eGxSYbMCDFtkCfI3S0">🖼️ 图片代理地址（可选，多个用逗号分隔）</div>
@@ -680,6 +682,7 @@ var syncTimer = null;
    只会觉得"另一台设备没更新"。这里记下最近一次成功/失败，在「关于 & 数据」里直接显示。 */
 var syncLastOk = 0;      // 上次成功写入云端的时间戳（0=从未成功）
 var syncFailMsg = '';    // 最近一次写入失败的原因（空=无失败）
+var lastBackendBuild = '';  // 后端 /info 回报的 BUILD_ID（判断线上是否已升到最新版）
 
 function getFamilyCode(){ try{ return localStorage.getItem(FAMILYCODE_KEY) || ''; }catch(e){ return ''; } }
 function setFamilyCode(code){ try{ localStorage.setItem(FAMILYCODE_KEY, code); }catch(e){} }
@@ -811,16 +814,27 @@ function ossStateUrl(code, extra){
   if (extra && extra.indexOf('only=') >= 0) params.only = 'ts';
   return ossUrl('/state', params);
 }
+/* fetch 带超时。移动端弱网 / 域名被拦时请求会长时间挂起，默认的 fetch 没有超时，
+   一直 pending 到浏览器放弃，最后只给一句 "Failed to fetch"，看不出是哪一层断了。 */
+function fetchWithTimeout(url, opts, ms){
+  opts = opts || {};
+  if(typeof AbortController === 'undefined') return fetch(url, opts);
+  var ctrl = new AbortController();
+  opts.signal = ctrl.signal;
+  var timer = setTimeout(function(){ ctrl.abort(); }, ms || 15000);
+  return fetch(url, opts).then(function(r){ clearTimeout(timer); return r; },
+                               function(e){ clearTimeout(timer); throw e; });
+}
 function ossGet(code){
-  return fetch(ossStateUrl(code), { headers: ossHeaders(), cache: 'no-store' })
+  return fetchWithTimeout(ossStateUrl(code), { method:'GET', headers: ossHeaders(), cache: 'no-store' }, 15000)
     .then(function(r){ return r.json(); });
 }
 function ossPut(code, data, baseTs){
-  return fetch(ossStateUrl(code), {
+  return fetchWithTimeout(ossStateUrl(code), {
     method: 'POST',
     headers: ossHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ data: data, ts: baseTs || 0 })
-  }).then(function(r){ return r.json(); });
+  }, 25000).then(function(r){ return r.json(); });
 }
 function ossSyncSave(){
   var code = getFamilyCode();
@@ -2266,6 +2280,109 @@ function photoSelfTest(){
 }
 document.getElementById('photoTestBtn').addEventListener('click', photoSelfTest);
 
+/* ---- 云端连通自检 ----
+   手机上报 "Failed to fetch" 至少有三种完全不同的根因，光看这句没法定位：
+     ① 网络层不可达（DNS / TLS / 运营商拦域名 / 离线）——GET 就失败
+     ② 混合内容：HTTPS 页面请求 HTTP 后端，浏览器直接拦掉——往往是地址填错成 http://
+     ③ CORS：GET 能过但 POST 过不了（预检失败），或源站没给 Access-Control-Allow-Origin
+   所以这里按「简单 GET → 读云端 → 写云端」三层逐步测，每层都打点和计时，
+   失败在哪一层就直接指到对应原因，并把前端版本一起报出来（确认手机跑的是不是最新代码）。 */
+function cloudSelfTest(){
+  var out = document.getElementById('cloudTestOut');
+  var L = [];
+  function line(s){ L.push(s); if(out) out.textContent = L.join('\n'); }
+
+  line('前端版本：' + FRONTEND_BUILD);
+  line('页面来源：' + location.origin + '（' + location.protocol + '）');
+  var api = apiBase();
+  if(!api){
+    line('✗ 未填「国内云 API 地址」：这台设备当前走 Supabase，国内基本连不上。');
+    line('  请在上方「☁️ 国内云 API 地址」填入 https://jjll-api-wqdnqmrmck.cn-hangzhou.fcapp.run 后保存。');
+    return;
+  }
+  line('后端地址：' + api);
+  if(/^http:\/\//.test(api) && location.protocol === 'https:'){
+    line('✗ 混合内容：页面是 HTTPS，后端填的是 HTTP，浏览器会直接拦掉请求。请把地址改成 https:// 开头。');
+    return;
+  }
+  if(!/^https?:\/\/[^/]+$/.test(api)){
+    line('⚠️ 地址格式可疑：正确形如 https://jjll-api-xxxxx.cn-hangzhou.fcapp.run');
+    line('  （不要带结尾斜杠、不要带 /state 之类的路径）');
+  }
+  if(apiToken()) line('已配置访问口令：会额外触发一次 CORS 预检（OPTIONS）。');
+  line('');
+
+  var t0 = Date.now();
+  line('① GET /info —— 测网络层与后端可达性…');
+  fetchWithTimeout(ossUrl('/info', {}), { method:'GET', headers: ossHeaders(), cache:'no-store' }, 12000)
+    .then(function(r){
+      line('   HTTP ' + r.status + '  ' + ((Date.now()-t0)/1000).toFixed(1) + 's');
+      if(!r.ok){
+        line('   ✗ 后端返回错误状态。可能是函数未部署或地址填错。');
+        return null;
+      }
+      return r.json().then(function(j){
+        line('   ✓ 可达。后端版本：' + ((j && j.buildId) || '未知'));
+        if(!j || !j.buildId || String(j.buildId).indexOf('v7') !== 0){
+          line('   ⚠️ 后端不是 v7（缺少 /img 中转），建议重新上传 jjll-api.zip 并部署。');
+        }
+        return true;
+      });
+    })
+    .then(function(ok){
+      if(!ok) return null;
+      line('');
+      line('② GET /state —— 测云端数据读取…');
+      var code = getFamilyCode() || '';
+      var t1 = Date.now();
+      return fetchWithTimeout(ossStateUrl(code), { method:'GET', headers: ossHeaders(), cache:'no-store' }, 15000)
+        .then(function(r){
+          line('   HTTP ' + r.status + '  ' + ((Date.now()-t1)/1000).toFixed(1) + 's');
+          if(!r.ok){ line('   ✗ 读取失败。'); return null; }
+          return r.json().then(function(res){
+            line('   ✓ 读取成功，云端 ts = ' + ((res && res.ts) || 0));
+            line('');
+            line('③ POST /state —— 测写入（此步会触发 CORS 预检）…');
+            var t2 = Date.now();
+            return fetchWithTimeout(ossStateUrl(code), {
+              method:'POST',
+              headers: ossHeaders({ 'Content-Type':'application/json' }),
+              body: JSON.stringify({ data: (res && res.data) || {}, ts: (res && res.ts) || 0 })
+            }, 25000).then(function(r){
+              line('   HTTP ' + r.status + '  ' + ((Date.now()-t2)/1000).toFixed(1) + 's');
+              return r.text().then(function(t){
+                var j = null; try{ j = JSON.parse(t); }catch(e){}
+                if(j && j.ok){ line('   ✓ 写入成功 —— 读写全通，这台设备可以正常同步。'); }
+                else{ line('   ✗ 写入失败，响应：' + String(t).slice(0,200)); }
+                return true;
+              });
+            });
+          });
+        });
+    })
+    .then(function(){
+      line('');
+      line('—— 自检结束 ——');
+    })
+    .catch(function(e){
+      var m = String((e && e.message) || e);
+      line('');
+      if(/abort/i.test(m)){
+        line('✗ 请求超时（被中断）：该域名在这个网络下大概率不可达或被拦。');
+        line('  建议：① 换一下网络（关 WiFi 用流量，或反过来）再测；');
+        line('       ② 用手机浏览器直接打开 ' + apiBase() + '/ —— 若打不开就是网络层拦了该域名；');
+        line('       ③ 若①②都失败，说明此运营商/浏览器拦了阿里云 fcapp.run，需要换自定义域名。');
+      }else{
+        line('✗ 网络层失败：' + m);
+        line('  典型原因：DNS 解析失败、TLS 握手被拦、离线、或浏览器/App 内置浏览环境禁止跨域请求。');
+        line('  排查：用手机浏览器直接打开 ' + apiBase() + '/ 看能否显示一段 JSON。');
+        line('       能显示 → 是跨域或版本问题；打不开 → 是该网络/浏览器拦了这个域名。');
+      }
+    });
+}
+var cloudTestBtnEl = document.getElementById('cloudTestBtn');
+if(cloudTestBtnEl) cloudTestBtnEl.addEventListener('click', cloudSelfTest);
+
 /* ---- 补建缩略图：给还没有缩略图的老照片补一张，补完同步给其它设备 ---- */
 function fetchImageData(url){
   return fetch(url, { mode:'cors', cache:'force-cache' })
@@ -2885,7 +3002,12 @@ function refreshAboutCloudState(){
   }else{
     syncTxt = '尚未同步过（改动保存后会自动上传）';
   }
-  el.innerHTML = base + '<br>' + syncTxt;
+  el.innerHTML = base + '<br>' + syncTxt
+    + '<br><span style="color:var(--text-light);font-size:12px;">前端版本 ' + FRONTEND_BUILD
+    + '　后端版本 ' + esc(lastBackendBuild || '未获取')
+    + '　<a href="#" id="cloudSelfTestLink" style="color:var(--primary);">连通自检</a></span>';
+  var lk = document.getElementById('cloudSelfTestLink');
+  if(lk) lk.addEventListener('click', function(e){ e.preventDefault(); openApiModal(); setTimeout(cloudSelfTest, 120); });
 }
 document.getElementById('aboutBtn').addEventListener('click', function(){
   refreshAboutCloudState();
