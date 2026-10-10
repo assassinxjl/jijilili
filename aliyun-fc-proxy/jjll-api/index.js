@@ -55,6 +55,10 @@ const TOKEN = env('JJLL_TOKEN');
 const HOST = BUCKET + '.' + ENDPOINT;
 const MAX_UPLOAD = 15 * 1024 * 1024;
 
+/* 每次改动代码都把 BUILD 改掉，这样打开根地址就能一眼确认「线上跑的是不是这一版」。
+   排查部署时非常好用：返回的 buildId 对不上，说明代码包没真正生效。 */
+const BUILD_ID = 'v2-pathfix-20261010-1030';
+
 /* 配置项来源，用于自检时一眼看出哪些没配上 */
 function configReport() {
   const keys = ['OSS_AK', 'OSS_SK', 'OSS_BUCKET', 'OSS_ENDPOINT', 'OSS_PUBLIC_BASE', 'JJLL_TOKEN'];
@@ -162,6 +166,18 @@ function buildResponse(status, obj) {
    注意：不同触发器类型下 event.path 的形态不一致，可能是 "/upload"，
    也可能是完整 URL "https://xxx.fcapp.run/upload?code=a"，
    还有的带在 requestContext.http.path。这里逐个回退，保证 pathname 一定是纯路径。 */
+const KNOWN_ROUTES = ['/upload', '/state', '/info', '/ping', '/diag'];
+function normalizePath(raw) {
+  let p = String(raw || '').trim();
+  if (!p) return '';
+  p = p.split('#')[0].split('?')[0];            // 去掉 query 与 fragment
+  if (p.indexOf('://') >= 0) {                  // 完整 URL → 取 pathname 部分
+    const m = p.match(/^[a-z]+:\/\/[^/]+(\/.*)?$/i);
+    p = (m && m[1]) || '/';
+  }
+  if (p.charAt(0) !== '/') p = '/' + p;          // 补前导斜杠
+  return p;
+}
 function extractPath(event) {
   const cands = [];
   if (event.path) cands.push(event.path);
@@ -171,38 +187,64 @@ function extractPath(event) {
     if (event.requestContext.http && event.requestContext.http.path) cands.push(event.requestContext.http.path);
   }
   for (let i = 0; i < cands.length; i++) {
-    let p = String(cands[i] || '').trim();
-    if (!p) continue;
-    p = p.split('#')[0].split('?')[0];          // 去掉 query 与 fragment
-    if (p.indexOf('://') >= 0) {                // 完整 URL → 取 pathname 部分
-      const m = p.match(/^[a-z]+:\/\/[^/]+(\/.*)?$/i);
-      p = (m && m[1]) || '/';
-    }
-    if (p.charAt(0) !== '/') p = '/' + p;       // 补前导斜杠
-    return p;
+    const p = normalizePath(cands[i]);
+    if (p) return p;
   }
+  /* 兜底：路径字段名可能完全不在上面这些里（例如只在 headers 或某个自定义字段中）。
+     把整个 event 序列化后扫描已知路由，避免又落到 '/' 上导致 /state /upload 全部失效。 */
+  try {
+    const s = JSON.stringify(event);
+    for (let i = 0; i < KNOWN_ROUTES.length; i++) {
+      if (s.indexOf(KNOWN_ROUTES[i]) >= 0) return KNOWN_ROUTES[i];
+    }
+  } catch (e) {}
   return '/';
 }
 function makeFakeReq(event) {
   const headers = {};
   const hs = event.headers || {};
   Object.keys(hs).forEach((k) => { headers[k.toLowerCase()] = hs[k]; });
-  const path = extractPath(event);
+
+  /* query 有三种可能来法，全都要兼容：
+     ① event.queryString（字符串，可能带前导 ?）
+     ② event.queryStringParameters（对象 {code:"xxx"}）
+     ③ 直接挂在 path 上（完整 URL 形态，extractPath 剥 query 时被丢掉了）
+     任何一种缺失都会导致 code 变 undefined → 读错家庭数据。 */
   let queryString = '';
+  function addQuery(s) {
+    if (!s) return;
+    const t = String(s).charAt(0) === '?' ? String(s).slice(1) : String(s);
+    if (!t) return;
+    if (queryString) { queryString += '&' + t; } else { queryString = t; }
+  }
   const qs = event.queryString || event.rawQueryString || '';
   if (typeof qs === 'string' && qs) {
-    queryString = qs.charAt(0) === '?' ? qs.slice(1) : qs;
+    addQuery(qs);
   } else if (qs && typeof qs === 'object') {
-    // 有些版本给的是对象形式 {code:"xxx"}
-    queryString = Object.keys(qs).map((k) => encodeURIComponent(k) + '=' + encodeURIComponent(qs[k])).join('&');
+    addQuery(Object.keys(qs).map((k) => encodeURIComponent(k) + '=' + encodeURIComponent(qs[k])).join('&'));
   }
-  // path 里如果本身就带 query，拆出来合并
-  if (path.indexOf('?') >= 0) { /* 已在 extractPath 去掉，这里只兜底 */ }
+  if (event.queryStringParameters && typeof event.queryStringParameters === 'object') {
+    addQuery(Object.keys(event.queryStringParameters).map((k) => encodeURIComponent(k) + '=' + encodeURIComponent(event.queryStringParameters[k])).join('&'));
+  }
+  ['path', 'rawPath'].forEach((k) => {
+    if (event[k] && String(event[k]).indexOf('?') >= 0) addQuery(String(event[k]).split('?')[1]);
+  });
+  if (event.requestContext && event.requestContext.http && event.requestContext.http.path &&
+      String(event.requestContext.http.path).indexOf('?') >= 0) {
+    addQuery(String(event.requestContext.http.path).split('?')[1]);
+  }
+  const path = extractPath(event);
+
+  /* HTTP 方法同样有多种来法 */
+  let method = event.httpMethod || event.method || '';
+  if (!method && event.requestContext) {
+    method = (event.requestContext.http && event.requestContext.http.method) || event.requestContext.httpMethod || '';
+  }
   const url = queryString ? (path + '?' + queryString) : path;
   const bodyBuf = Buffer.from(event.body || '', event.isBase64Encoded ? 'base64' : 'utf8');
   const listeners = {};
   const req = {
-    method: (event.httpMethod || 'GET').toUpperCase(),
+    method: String(method || 'GET').toUpperCase(),
     url: url,
     headers: headers,
     on(ev, fn) { (listeners[ev] = listeners[ev] || []).push(fn); return req; },
@@ -213,6 +255,7 @@ function makeFakeReq(event) {
     req.emit('end');
   });
   req._bodyBuf = bodyBuf;
+  req._event = event || {};
   return req;
 }
 
@@ -275,9 +318,34 @@ const server = http.createServer((req, res) => {
      必须放在所有 OSS 访问之前，因为 FC 默认超时只有 3 秒，连 OSS 可能来不及返回。 */
   if (pathname === '/ping') {
     return sendJSON(res, 200, {
-      ok: true, pong: true, service: 'jijilili-backend',
+      ok: true, pong: true, buildId: BUILD_ID, service: 'jijilili-backend',
       runtime: 'fc-handler', bucket: BUCKET, publicBase: PUBLIC_BASE,
       config: configReport(), time: new Date().toISOString()
+    });
+  }
+
+  /* 现场诊断：把 FC 传进来的 event 结构原样吐出来（含各个路径候选字段的值），
+     用来一次性判断问题出在哪：代码包没更新 / 路径字段名异常 / 触发器类型不对。
+     注意：token 校验要放在它之后，否则传不上口令就看不到诊断信息。 */
+  if (pathname === '/diag') {
+    const lastEvent = req._event || {};
+    const picked = {};
+    ['path', 'rawPath', 'httpMethod', 'method', 'queryString', 'queryStringParameters', 'isBase64Encoded'].forEach((k) => {
+      if (lastEvent[k] !== undefined) picked[k] = lastEvent[k];
+    });
+    if (lastEvent.requestContext) {
+      picked.requestContext = {
+        path: lastEvent.requestContext.path,
+        http: lastEvent.requestContext.http,
+        httpMethod: lastEvent.requestContext.httpMethod
+      };
+    }
+    picked.headerKeys = Object.keys(lastEvent.headers || {});
+    picked.eventTopKeys = Object.keys(lastEvent);
+    return sendJSON(res, 200, {
+      ok: true, buildId: BUILD_ID, resolvedPath: pathname,
+      resolvedQuery: query, event: picked,
+      hint: 'buildId 与本地最新代码一致 = 代码包已生效；若 resolvedPath 变成 "/" 说明路径字段未被识别，把 event 内容发给我。'
     });
   }
 
@@ -293,6 +361,7 @@ const server = http.createServer((req, res) => {
     const missing = ['OSS_AK', 'OSS_SK', 'OSS_BUCKET'].filter((k) => !env(k));
     const base = {
       service: 'jijilili-backend',
+      buildId: BUILD_ID,
       bucket: BUCKET,
       publicBase: PUBLIC_BASE,
       config: configReport(),
@@ -317,7 +386,7 @@ const server = http.createServer((req, res) => {
 
   /* 公开读域名 */
   if (pathname === '/info') {
-    return sendJSON(res, 200, { ok: true, publicBase: PUBLIC_BASE, bucket: BUCKET });
+    return sendJSON(res, 200, { ok: true, buildId: BUILD_ID, publicBase: PUBLIC_BASE, bucket: BUCKET });
   }
 
   const code = safeCode(query.code);

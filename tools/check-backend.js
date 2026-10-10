@@ -126,6 +126,30 @@ function isTokenBlocked(res) {
   }
   line(true, '2. /ping（代码已跑起来）', ping.ms + 'ms  ' + ping.text.slice(0, 120));
 
+  /* 2.5 版本自检：后端每次改代码都会换 buildId。
+     buildId 缺失 = 线上是更老的代码包（连 buildId 这行代码都没有），
+     buildId 存在但和 EXPECTED_BUILD 不同 = 代码包传上去了但版本不是最新的那一份。 */
+  let pingJson = null;
+  try { pingJson = JSON.parse(ping.text); } catch (e) {}
+  const EXPECTED_BUILD = 'v2-pathfix-20261010-1030';
+  if (pingJson && pingJson.buildId) {
+    if (pingJson.buildId === EXPECTED_BUILD) {
+      line(true, '2.5 代码包版本', 'buildId=' + pingJson.buildId + '（✅ 与本地最新一致）');
+    } else {
+      line(false, '2.5 代码包版本', 'buildId=' + pingJson.buildId + '（❌ 本地最新是 ' + EXPECTED_BUILD + '）');
+      console.log('');
+      console.log('  → 线上跑的是旧版本代码包，说明你上传的那份不是最新的，或者传上去后没点「部署」。');
+      console.log('  → 本地最新代码包：C:\\Users\\11637\\WorkBuddy\\20260504223628\\jijilili-app\\aliyun-fc-proxy\\jjll-api\\jjll-api.zip');
+      console.log('  → 请重新上传该文件，上传完务必点「部署」按钮（这一步不做，线上永远跑旧代码）。');
+      console.log('');
+      process.exit(1);
+    }
+  } else {
+    line(false, '2.5 代码包版本', '响应里没有 buildId → 线上是更老的代码包（本次上传没生效）');
+    console.log('     → 重新上传最新 jjll-api.zip 并点「部署」。');
+    process.exit(1);
+  }
+
   /* 3. / 自检：连 OSS 看配置 */
   const self = await get('/', { timeout: 25000 });
   if (!self.ok) {
@@ -156,13 +180,17 @@ function isTokenBlocked(res) {
   if (routedToRoot(getState)) {
     line(false, '4. /state 路由', '返回的却是根路径自检 → 线上还是旧代码包');
     console.log('');
-    console.log('  → 后端能跑通，但你的 FC 上部署的是旧版 index.js：');
+    console.log('  → 后端能跑通，但你的 FC 上部署的 index.js 缺路由修复：');
     console.log('     所有子路径（/state /info /upload）都被错当成根路径，所以「迁移照片」会全部失败。');
     console.log('');
     console.log('  ✅ 解决办法：');
-    console.log('     1) FC「代码」页 → 上传代码包（选最新的 jjll-api.zip）→ 点「部署」');
-    console.log('     2) 再跑一次本脚本，第 4、5 项就应变成 ✅');
+    console.log('     1) FC「代码」页 → 上传代码包，选这个文件（选完看文件名对不对）：');
+    console.log('        C:\\Users\\11637\\WorkBuddy\\20260504223628\\jijilili-app\\aliyun-fc-proxy\\jjll-api\\jjll-api.zip');
+    console.log('     2) 上传完必须点右下角「部署」——只上传不部署，线上还是旧代码，这是最容易漏的一步');
+    console.log('     3) 部署完成后打开 xxx.fcapp.run/ping，返回的 buildId 应为 v2-pathfix-20261010-1030');
+    console.log('     4) 再跑一次本脚本，第 4、5 项就会变成 ✅');
     console.log('');
+    console.log('  → 另外可访问 xxx.fcapp.run/diag 查看后端实际收到的请求结构（辅助定位）。');
     console.log('  → 本次不用管前端 git push，先把后端代码包传上去。');
     process.exit(1);
   }
