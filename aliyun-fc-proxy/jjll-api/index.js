@@ -57,7 +57,7 @@ const MAX_UPLOAD = 15 * 1024 * 1024;
 
 /* 每次改动代码都把 BUILD 改掉，这样打开根地址就能一眼确认「线上跑的是不是这一版」。
    排查部署时非常好用：返回的 buildId 对不上，说明代码包没真正生效。 */
-const BUILD_ID = 'v4-strevent-20261010-1105';
+const BUILD_ID = 'v5-buffer-20261010-1112';
 
 /* 配置项来源，用于自检时一眼看出哪些没配上 */
 function configReport() {
@@ -317,11 +317,17 @@ function safeParse(s) { try { return JSON.parse(s); } catch (e) { return { ok: f
  *   ② 是字符串且能 JSON.parse 成对象 → 用解析结果
  *   ③ 解析不了 → 视为「原始 HTTP 报文」，用正则从里面抠出方法/路径/头/body
  * ===================================================================== */
-function parseRawHttp(text) {
+function parseRawHttp(raw) {
   const out = { headers: {} };
-  const lines = String(text).split(/\r?\n/);
-  /* 首行形如 "GET /state?code=abc HTTP/1.1" 或 "POST /upload?... HTTP/1.1" */
-  const m0 = String(lines[0] || '').match(/^([A-Z]+)\s+(\S+)\s+HTTP\/\d\.\d$/);
+  /* Buffer 可能含二进制头/BOM/前导空行，先统一转字符串并清干净，
+     否则首行正则 /^([A-Z]+)\s+(\S+)\s+HTTP\// 会因为多一个 \uFEFF 就匹配失败。 */
+  let text = (typeof Buffer !== 'undefined' && Buffer.isBuffer(raw)) ? raw.toString('utf8') : String(raw);
+  text = text.replace(/^\uFEFF/, '').replace(/^[\r\n\s]+/, '');
+  const lines = text.split(/\r?\n/);
+
+  /* 首行形如 "GET /state?code=abc HTTP/1.1"。
+     末尾的 $ 不加，容忍 "HTTP/1.1" 后还有残留字符的情况。 */
+  const m0 = String(lines[0] || '').match(/^([A-Z]{3,7})\s+(\S+)(?:\s+HTTP\/\d\.\d)?/);
   if (m0) {
     out.httpMethod = m0[1];
     out.path = m0[2];
@@ -329,23 +335,29 @@ function parseRawHttp(text) {
   /* 头部到空行为止 */
   for (let i = 1; i < lines.length; i++) {
     const ln = lines[i];
-    if (!ln) break;                                  // 空行 → 头部结束
+    if (!ln || !ln.trim()) break;                     // 空行 → 头部结束
     const ci = ln.indexOf(':');
     if (ci < 0) continue;
     const k = ln.slice(0, ci).trim().toLowerCase();
     if (k) out.headers[k] = ln.slice(ci + 1).trim();
   }
-  const idx = lines.indexOf('');
+  const idx = lines.findIndex((l) => !l || !l.trim());
   if (idx >= 0) {
     const body = lines.slice(idx + 1).join('\n');
-    if (body) { out.body = body; out.isBase64Encoded = false; }
+    if (body.trim()) { out.body = body; out.isBase64Encoded = false; }
   }
-  /* 若首行没匹配上（可能是完整 URL 单独一行等形态），再全文扫一次路径 */
+  /* 兜底：首行没匹配上时，全文再扫一次路径（完整 URL 或已知路由名） */
   if (!out.path) {
-    const m1 = String(text).match(/\b(https?:\/\/[^\s"']+|\/(?:ping|diag|info|state|upload)(?:\?[^\s"']*)?)/);
+    const m1 = text.match(/\b(https?:\/\/[^\s"']+|\/(?:ping|diag|info|state|upload)(?:\?[^\s"']*)?)/);
     if (m1) out.path = m1[1];
   }
+  if (!out.path) {
+    /* 再兜底：找任意 "/xxx?yyy" 形态（不限于已知路由，保证 query 也能被解析出来） */
+    const m2 = text.match(/(\/[A-Za-z0-9_\-\.]*\??[^\s"']*)/);
+    if (m2 && m2[1].length > 1) out.path = m2[1];
+  }
   if (!out.httpMethod && /\bPOST\b/.test(text)) out.httpMethod = 'POST';
+  if (!out.httpMethod && /\bGET\b/.test(text)) out.httpMethod = 'GET';
   return out;
 }
 function normalizeEvent(event) {
@@ -358,10 +370,32 @@ function normalizeEvent(event) {
     return event;
   }
   const text = String(event);
-  /* ① 先当 JSON 试 */
+  /* ① 先当 JSON 试。注意：解析成功 ≠ 内容可用——
+        线上实测遇到过「能 parse 成对象但里面根本没有 path 字段」的情况，
+        这时如果直接 return j，所有路由又会全部失效。
+        所以必须校验：parse 结果里得有路径信息，否则继续往下走报文解析。 */
   try {
     const j = JSON.parse(text);
-    if (j && typeof j === 'object') return j;
+    if (j && typeof j === 'object') {
+      const hasPathInfo = j.path || j.rawPath ||
+        (j.requestContext && (j.requestContext.path || (j.requestContext.http && j.requestContext.http.path)));
+      if (hasPathInfo) return j;
+      /* 没有路径字段 → 记下来，同时仍尝试报文解析（两条路都走，取先命中的） */
+      const viaRaw = parseRawHttp(text);
+      if (viaRaw.path) return viaRaw;
+      /* 再兜底：把解析出的对象里所有字符串值扫一遍找已知路由。
+         覆盖「JSON 结构未知但某个字段里存着 URL」的情况。 */
+      const strs = flattenEvent(j, 0, []);
+      for (let i = 0; i < strs.length; i++) {
+        for (let r = 0; r < KNOWN_ROUTES.length; r++) {
+          if (strs[i].indexOf(KNOWN_ROUTES[r]) >= 0) {
+            const m = strs[i].match(/\/[A-Za-z0-9_\-\.]*(?:\?[^\s"']*)?/);
+            return Object.assign({}, j, { path: m ? (m[0].indexOf('?') >= 0 ? m[0] : KNOWN_ROUTES[r]) : KNOWN_ROUTES[r] });
+          }
+        }
+      }
+      return j;
+    }
   } catch (e) {}
   /* ② 当原始 HTTP 报文解析 */
   try { return parseRawHttp(text); } catch (e) {}
@@ -457,8 +491,18 @@ const server = http.createServer((req, res) => {
        这就是所有路由失效的根因。同时把字符串前 600 字符原样带出来（不含照片 base64 的场景）。 */
     const raw = req._rawEvent;
     if (raw !== undefined && raw !== null) {
-      picked.rawType = (typeof Buffer !== 'undefined' && Buffer.isBuffer(raw)) ? 'Buffer' : (typeof raw);
-      if (typeof raw === 'string') picked.rawPreview = raw.slice(0, 600);
+      const isBuf = (typeof Buffer !== 'undefined' && Buffer.isBuffer(raw));
+      picked.rawType = isBuf ? 'Buffer' : (typeof raw);
+      /* Buffer 也要能预览，否则线上是 Buffer 时 rawPreview 恒为空，等于没诊断。
+         先转字符串；含不可打印字符时用 JSON.stringify 呈现转义形态。 */
+      if (isBuf || typeof raw === 'string') {
+        const s = isBuf ? raw.toString('utf8') : raw;
+        let prev = s.slice(0, 600);
+        // 若含控制字符，改用转义形式展示，保证可读
+        if (/[\x00-\x08\x0B\x0C\x0E-\x1F]/.test(prev)) prev = JSON.stringify(prev);
+        picked.rawPreview = prev;
+        picked.rawLength = s.length;
+      }
     } else {
       picked.rawType = '(undefined)';
     }
