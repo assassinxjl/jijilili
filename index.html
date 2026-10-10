@@ -858,8 +858,19 @@ function ossUploadPhoto(dataUrl){
     method: 'POST',
     headers: ossHeaders({ 'Content-Type': 'image/jpeg' }),
     body: dataUrlToBlob(dataUrl)
-  }).then(function(r){ return r.json(); }).then(function(j){
-    if(!j || !j.ok || !j.url) throw new Error((j && j.error) || 'oss-upload-failed');
+  }).then(function(r){
+    return r.text().then(function(t){
+      var j = null;
+      try{ j = JSON.parse(t); }catch(e){}
+      if(!r.ok || !j || !j.ok){
+        // 后端把错误放在 json 里，尽量把真实原因带出去，便于定位
+        var msg = (j && (j.error || j.message)) || ('HTTP ' + r.status) + (t ? ('：' + t.slice(0, 120)) : '');
+        throw new Error(msg);
+      }
+      return j;
+    });
+  }).then(function(j){
+    if(!j.url) throw new Error('后端未返回图片地址');
     return j.url;
   });
 }
@@ -2204,7 +2215,8 @@ function migratePhotosToCloud(){
   });
   var todo = refs.filter(function(r){ return !isOssRef(r); });
   if(!todo.length){ if(out) out.textContent = '所有照片都已在国內云上 ✓'; return; }
-  var done = 0, ok = 0, fail = 0, lowQ = 0;
+  var done = 0, ok = 0, fail = 0, lowQ = 0, noData = 0;
+  var firstErr = '';
   function flush(){ if(out) out.textContent = '迁移中… ' + done + '/' + todo.length + '（成功 ' + ok + '，降级 ' + lowQ + '，失败 ' + fail + '）'; }
   flush();
   /* 串行处理：一张拉完再下一张，避免几十张图并发把网络/函数压垮 */
@@ -2214,7 +2226,8 @@ function migratePhotosToCloud(){
       var msg = '迁移完成：成功 ' + ok + ' 张';
       if(lowQ) msg += '（其中 ' + lowQ + ' 张只有缩略图，画质较低）';
       if(fail) msg += '，失败 ' + fail + ' 张';
-      msg += '。' + (ok ? '已写入本地，正在同步到云端…' : '');
+      if(fail) msg += '。首个失败原因：' + (firstErr || '未知') + (noData ? ('　其中 ' + noData + ' 张在本机找不到原始数据（既没有本机副本，也连不上 Supabase）') : '');
+      else msg += '。' + (ok ? '已写入本地，正在同步到云端…' : '');
       if(out) out.textContent = msg;
       if(ok) saveState();
       return;
@@ -2222,7 +2235,7 @@ function migratePhotosToCloud(){
     var ref = todo[idx++];
     photoSourceData(ref).then(function(d){
       if(d && isDataUrl(d) && d === thumbOf(ref)) lowQ++;   // 只剩缩略图可用，属降级迁移
-      if(!d || !isDataUrl(d)) throw new Error('no-data');
+      if(!d || !isDataUrl(d)){ noData++; throw new Error('本机没有这张照片的原始数据，且当前网络连不上 Supabase'); }
       return ossUploadPhoto(d).then(function(url){
         var th = thumbOf(ref);
         (state.recipeRecords || []).forEach(function(r){
@@ -2236,8 +2249,10 @@ function migratePhotosToCloud(){
       });
     }).then(function(){
       ok++; done++; flush(); step();
-    }, function(){
-      fail++; done++; flush(); step();
+    }, function(e){
+      fail++; done++;
+      if(!firstErr) firstErr = (e && (e.message || e.error)) || String(e);
+      flush(); step();
     });
   }
   step();

@@ -158,16 +158,48 @@ function buildResponse(status, obj) {
   };
 }
 
-/* 把 FC 事件对象转成与 http.IncomingMessage 一致的形状，复用下面的同一套路由逻辑 */
+/* 把 FC 事件对象转成与 http.IncomingMessage 一致的形状，复用下面的同一套路由逻辑。
+   注意：不同触发器类型下 event.path 的形态不一致，可能是 "/upload"，
+   也可能是完整 URL "https://xxx.fcapp.run/upload?code=a"，
+   还有的带在 requestContext.http.path。这里逐个回退，保证 pathname 一定是纯路径。 */
+function extractPath(event) {
+  const cands = [];
+  if (event.path) cands.push(event.path);
+  if (event.rawPath) cands.push(event.rawPath);
+  if (event.requestContext) {
+    if (event.requestContext.path) cands.push(event.requestContext.path);
+    if (event.requestContext.http && event.requestContext.http.path) cands.push(event.requestContext.http.path);
+  }
+  for (let i = 0; i < cands.length; i++) {
+    let p = String(cands[i] || '').trim();
+    if (!p) continue;
+    p = p.split('#')[0].split('?')[0];          // 去掉 query 与 fragment
+    if (p.indexOf('://') >= 0) {                // 完整 URL → 取 pathname 部分
+      const m = p.match(/^[a-z]+:\/\/[^/]+(\/.*)?$/i);
+      p = (m && m[1]) || '/';
+    }
+    if (p.charAt(0) !== '/') p = '/' + p;       // 补前导斜杠
+    return p;
+  }
+  return '/';
+}
 function makeFakeReq(event) {
   const headers = {};
   const hs = event.headers || {};
   Object.keys(hs).forEach((k) => { headers[k.toLowerCase()] = hs[k]; });
-  const queryString = event.queryString || (event.rawQueryString) || '';
-  const path = event.path || event.requestContext && event.requestContext.path || '/';
+  const path = extractPath(event);
+  let queryString = '';
+  const qs = event.queryString || event.rawQueryString || '';
+  if (typeof qs === 'string' && qs) {
+    queryString = qs.charAt(0) === '?' ? qs.slice(1) : qs;
+  } else if (qs && typeof qs === 'object') {
+    // 有些版本给的是对象形式 {code:"xxx"}
+    queryString = Object.keys(qs).map((k) => encodeURIComponent(k) + '=' + encodeURIComponent(qs[k])).join('&');
+  }
+  // path 里如果本身就带 query，拆出来合并
+  if (path.indexOf('?') >= 0) { /* 已在 extractPath 去掉，这里只兜底 */ }
   const url = queryString ? (path + '?' + queryString) : path;
   const bodyBuf = Buffer.from(event.body || '', event.isBase64Encoded ? 'base64' : 'utf8');
-  let done = false;
   const listeners = {};
   const req = {
     method: (event.httpMethod || 'GET').toUpperCase(),
@@ -290,13 +322,19 @@ const server = http.createServer((req, res) => {
 
   const code = safeCode(query.code);
 
+  /* 只取 ts 的轻量轮询（前端 ossPoll 用 &only=ts 调用），避免每次都把整份数据传回来。
+     不带 data 字段，前端只用来判断「云端有没有更新」。 */
+  const onlyTs = String(query.only || '') === 'ts';
+
   /* 读取家庭数据 */
   if (pathname === '/state' && req.method === 'GET') {
     return oss('GET', 'data/' + code + '.json', null, '')
       .then((r) => {
         if (r.status === 404) return sendJSON(res, 200, { ok: true, ts: 0, data: null });
         const obj = parseJSON(r.body);
-        return sendJSON(res, 200, { ok: true, ts: (obj && obj.ts) || 0, data: (obj && obj.data) || null });
+        const ts = (obj && obj.ts) || 0;
+        if (onlyTs) return sendJSON(res, 200, { ok: true, ts: ts });
+        return sendJSON(res, 200, { ok: true, ts: ts, data: (obj && obj.data) || null });
       })
       .catch((e) => sendJSON(res, 502, { ok: false, error: 'oss read failed: ' + e.message }));
   }
