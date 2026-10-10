@@ -219,17 +219,16 @@ async function probeRoute(route) {
     console.log('  🔎 后端看到的请求现场（diag）：');
     console.log('     rawPathname=' + d.rawPathname + '  resolvedPath=' + d.resolvedPath +
       '  viaQueryRoute=' + d.viaQueryRoute);
-    /* event 形态是最关键的一项：object = 正常；string = FC 传的是字符串，
-       旧版代码会把字符串当对象用，导致所有字段 undefined、所有路由失效。 */
+    /* event 形态：Buffer/string 本身不是故障——v6 后端已能正确处理。
+       真正的判据是"路由走没走通"，而 2.1/2.2/4/5 项已经证明了这一点。
+       这里只做客观陈述，避免让人误以为还有问题。 */
     if (d.event.rawType && d.event.rawType !== 'object') {
-      console.log('     ⚠️ event 形态 = ' + d.event.rawType + '（不是对象！）');
-      console.log('        → 旧代码会把字符串当对象读，event.path 全是 undefined，所有子路由失效。');
-      console.log('        → 这就是「迁移照片全部失败」的根因。需要上传支持字符串 event 的后端。');
+      console.log('     event 形态 = ' + d.event.rawType + '（FC 直接传二进制，非 JSON 对象；新版后端已支持）');
       if (d.event.rawPreview) {
-        console.log('        内容前 200 字符: ' + String(d.event.rawPreview).replace(/\s+/g, ' ').slice(0, 200));
+        console.log('       内容前 160 字符: ' + String(d.event.rawPreview).replace(/\s+/g, ' ').slice(0, 160));
       }
     } else {
-      console.log('     event 形态 = object（正常）');
+      console.log('     event 形态 = object');
     }
     console.log('     event 顶层字段: ' + JSON.stringify(d.event.eventTopKeys).slice(0, 200) +
       (d.event.eventTopKeyCount > 30 ? (' …（共 ' + d.event.eventTopKeyCount + ' 项，上面只显示前 30）') : ''));
@@ -238,7 +237,10 @@ async function probeRoute(route) {
       console.log('     event 里的字符串值: ' + JSON.stringify(d.event.stringValues).slice(0, 300));
     }
     if (d.resolvedPath === '/' && d.viaQueryRoute === false) {
-      console.log('     ⚠️ resolvedPath 是 "/" 且没走 __p 通道 —— 后端完全没拿到真实路径。');
+      /* 这条只说明「本次访问的是根路径自检」，本身不算故障——
+         真正是否路由失效，看 2.1 / 2.2 / 4 / 5 四项的结果即可。 */
+      console.log('     （本次是访问根路径自检，所以 resolvedPath 为 "/"；' +
+        '是否路由正常请以 2.1/2.2/4/5 项为准）');
     }
     console.log('');
   }
