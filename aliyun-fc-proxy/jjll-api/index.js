@@ -57,7 +57,7 @@ const MAX_UPLOAD = 15 * 1024 * 1024;
 
 /* 每次改动代码都把 BUILD 改掉，这样打开根地址就能一眼确认「线上跑的是不是这一版」。
    排查部署时非常好用：返回的 buildId 对不上，说明代码包没真正生效。 */
-const BUILD_ID = 'v2-pathfix-20261010-1030';
+const BUILD_ID = 'v3-diag-20261010-1100';
 
 /* 配置项来源，用于自检时一眼看出哪些没配上 */
 function configReport() {
@@ -178,6 +178,26 @@ function normalizePath(raw) {
   if (p.charAt(0) !== '/') p = '/' + p;          // 补前导斜杠
   return p;
 }
+/* 把 event 递归压平成一组 "键=值" 字符串，用于「路径藏在奇怪字段里」时兜底查找。
+   深度限制 4 层，数组最多看前 20 项，避免超大 body 把函数拖垮。 */
+function flattenEvent(obj, depth, out) {
+  out = out || [];
+  depth = depth || 0;
+  if (depth > 4 || obj === null || obj === undefined) return out;
+  if (typeof obj !== 'object') {
+    if (typeof obj === 'string' && obj && obj.length < 500) out.push(obj);
+    return out;
+  }
+  if (Array.isArray(obj)) {
+    for (let i = 0; i < obj.length && i < 20; i++) flattenEvent(obj[i], depth + 1, out);
+    return out;
+  }
+  const keys = Object.keys(obj);
+  for (let i = 0; i < keys.length; i++) {
+    flattenEvent(obj[keys[i]], depth + 1, out);
+  }
+  return out;
+}
 function extractPath(event) {
   const cands = [];
   if (event.path) cands.push(event.path);
@@ -190,12 +210,16 @@ function extractPath(event) {
     const p = normalizePath(cands[i]);
     if (p) return p;
   }
-  /* 兜底：路径字段名可能完全不在上面这些里（例如只在 headers 或某个自定义字段中）。
-     把整个 event 序列化后扫描已知路由，避免又落到 '/' 上导致 /state /upload 全部失效。 */
+  /* 兜底 1：把 event 里所有字符串值收集起来，逐个扫已知路由。
+     注意不能直接 JSON.stringify 整个 event —— body 可能是几 MB 的 base64 照片，
+     那样既慢又可能误命中。这���只扫长度 < 500 的短字符串。 */
   try {
-    const s = JSON.stringify(event);
-    for (let i = 0; i < KNOWN_ROUTES.length; i++) {
-      if (s.indexOf(KNOWN_ROUTES[i]) >= 0) return KNOWN_ROUTES[i];
+    const strs = flattenEvent(event, 0, []);
+    for (let i = 0; i < strs.length; i++) {
+      const s = strs[i];
+      for (let r = 0; r < KNOWN_ROUTES.length; r++) {
+        if (s.indexOf(KNOWN_ROUTES[r]) >= 0) return KNOWN_ROUTES[r];
+      }
     }
   } catch (e) {}
   return '/';
@@ -306,13 +330,21 @@ const server = http.createServer((req, res) => {
 
   if (req.method === 'OPTIONS') { res.statusCode = 204; return res.end(); }
 
-  const pathname = (req.url || '/').split('?')[0];
+  const rawPathname = (req.url || '/').split('?')[0];
   const query = {};
   ((req.url || '').split('?')[1] || '').split('&').forEach((kv) => {
     if (!kv) return;
     const p = kv.split('=');
     query[decodeURIComponent(p[0])] = decodeURIComponent((p[1] || '').replace(/\+/g, ' '));
   });
+
+  /* 备用路由通道：?__p=/state
+     某些 FC 触发器形态下无论怎么猜都拿不到真实路径（实测 /ping /info /diag 全部被当成 /）。
+     这时前端改用根地址 + __p 参数显式指定接口，完全绕开路径识别。 */
+  let pathname = rawPathname;
+  if (query.__p && KNOWN_ROUTES.indexOf(normalizePath(query.__p)) >= 0) {
+    pathname = normalizePath(query.__p);
+  }
 
   /* 快速自检：不去连 OSS，纯粹确认「代码跑起来了 + 环境变量读到了」。
      必须放在所有 OSS 访问之前，因为 FC 默认超时只有 3 秒，连 OSS 可能来不及返回。 */
@@ -324,10 +356,10 @@ const server = http.createServer((req, res) => {
     });
   }
 
-  /* 现场诊断：把 FC 传进来的 event 结构原样吐出来（含各个路径候选字段的值），
-     用来一次性判断问题出在哪：代码包没更新 / 路径字段名异常 / 触发器类型不对。
-     注意：token 校验要放在它之后，否则传不上口令就看不到诊断信息。 */
-  if (pathname === '/diag') {
+  /* 现场诊断：把 FC 传进来的 event 结构原样吐出来。
+     ⚠️ 关键：诊断信息同时挂在根路径 '/' 上（见下方 root 分支的 event 字段）。
+        因为一旦路径识别失效，'/diag' 根本进不来，只有 '/' 是必然能到达的。 */
+  function buildDiag() {
     const lastEvent = req._event || {};
     const picked = {};
     ['path', 'rawPath', 'httpMethod', 'method', 'queryString', 'queryStringParameters', 'isBase64Encoded'].forEach((k) => {
@@ -342,11 +374,18 @@ const server = http.createServer((req, res) => {
     }
     picked.headerKeys = Object.keys(lastEvent.headers || {});
     picked.eventTopKeys = Object.keys(lastEvent);
-    return sendJSON(res, 200, {
-      ok: true, buildId: BUILD_ID, resolvedPath: pathname,
-      resolvedQuery: query, event: picked,
-      hint: 'buildId 与本地最新代码一致 = 代码包已生效；若 resolvedPath 变成 "/" 说明路径字段未被识别，把 event 内容发给我。'
-    });
+    /* 只列出 event 里所有短字符串（不含照片 base64），直接看路径藏在哪个键里 */
+    picked.stringValues = flattenEvent(lastEvent, 0, []).filter((s) => s && s.length < 120).slice(0, 30);
+    return {
+      ok: true, buildId: BUILD_ID,
+      rawPathname: rawPathname, resolvedPath: pathname,
+      viaQueryRoute: pathname !== rawPathname, resolvedQuery: query, event: picked
+    };
+  }
+  if (pathname === '/diag') {
+    return sendJSON(res, 200, Object.assign(buildDiag(), {
+      hint: 'resolvedPath 是 "/" 说明路径字段未被识别；把 event 内容发给我。'
+    }));
   }
 
   if (!BUCKET || !AK || !SK) {
@@ -365,6 +404,9 @@ const server = http.createServer((req, res) => {
       bucket: BUCKET,
       publicBase: PUBLIC_BASE,
       config: configReport(),
+      /* ⚠️ 无条件带上现场诊断：路径识别失效时 '/' 是唯一必然能到达的分支，
+         诊断信息只能挂在这里，否则会出现「诊断接口本身也进不去」的死锁。 */
+      diag: buildDiag(),
       time: new Date().toISOString()
     };
     if (missing.length) {

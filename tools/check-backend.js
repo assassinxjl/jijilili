@@ -61,6 +61,36 @@ function lineInfo(name, detail) {
 function isTokenBlocked(res) {
   return res && res.status === 401 && /token/i.test(res.text || '');
 }
+/* 对 probeRoute 的结果做同样判断（它拿到的是已解析的 JSON，没有 status/text 字段） */
+function isTokenBlockedRes(probe) {
+  if (!probe) return false;
+  const a = probe.pathOk && probe.pathJson && /token/i.test(probe.pathJson.error || '');
+  const b = probe.queryOk && probe.queryJson && /token/i.test(probe.queryJson.error || '');
+  return !!a || !!b;
+}
+
+/* ========== 路径通道 vs __p 通道 ==========
+   实测发现阿里云 FC 某种触发器形态下后端拿不到真实路径：/ping /info /diag 全部被当成根路径。
+   所以这里两种通道都测：
+     路径通道：/ping
+     参数通道：/?__p=%2Fping   （新版后端优先读 __p，能绕开路径识别问题）
+   只要有一通就算后端可用，另一通用于告诉你「前端应该走哪条路」。 */
+async function probeRoute(route) {
+  const byPath = await get(route, { timeout: 15000 });
+  const byQuery = await get('/?__p=' + encodeURIComponent(route), { timeout: 15000 });
+  function parse(r) { try { return JSON.parse(r.text || ''); } catch (e) { return null; } }
+  const jp = byPath.ok ? parse(byPath) : null;
+  const jq = byQuery.ok ? parse(byQuery) : null;
+  return {
+    route: route,
+    pathOk: !!jp,
+    pathMs: byPath.ms,
+    pathJson: jp,
+    queryOk: !!jq,
+    queryMs: byQuery.ms,
+    queryJson: jq
+  };
+}
 
 (async function main() {
   console.log('目标：' + base);
@@ -91,10 +121,10 @@ function isTokenBlocked(res) {
   if (dnsOk) line(true, '1. DNS 解析', dnsMsg);
   else lineInfo('1. DNS 解析', dnsMsg);
 
-  /* 2. /ping —— 关键：不连 OSS，能最快判断「代码是否跑起来」 */
-  const ping = await get('/ping', { timeout: 15000 });
-  if (!ping.ok) {
-    line(false, '2. /ping（代码是否跑起来）', ping.err + '（' + ping.ms + 'ms）');
+  /* 2. /ping 双通道探测 —— 判断「代码是否跑起来」+「路径能不能识别」 */
+  const pingProbe = await probeRoute('/ping');
+  if (!pingProbe.pathOk && !pingProbe.queryOk) {
+    line(false, '2. /ping（代码是否跑起来）', '两种通道都没响应');
     console.log('');
     if (!dnsOk) {
       console.log('  → 注意：本机 DNS 也没解析出这个域名。下面按优先级排查：');
@@ -112,7 +142,7 @@ function isTokenBlocked(res) {
     }
     process.exit(1);
   }
-  if (isTokenBlocked(ping)) {
+  if (isTokenBlockedRes(pingProbe)) {
     line(false, '2. /ping', 'HTTP 401：token 不匹配 → 后端设了访问口令，但你没把口令传进来');
     console.log('');
     console.log('  ✅ 这说明函数代码其实已经跑起来了！（能返回 401 说明它正常执行到了鉴权那一步）');
@@ -120,37 +150,49 @@ function isTokenBlocked(res) {
     console.log('     node tools/check-backend.js ' + base + ' <访问口令>');
     process.exit(1);
   }
-  if (ping.status !== 200) {
-    line(false, '2. /ping', 'HTTP ' + ping.status + '：' + ping.text.slice(0, 200));
-    process.exit(1);
-  }
-  line(true, '2. /ping（代码已跑起来）', ping.ms + 'ms  ' + ping.text.slice(0, 120));
 
-  /* 2.5 版本自检：后端每次改代码都会换 buildId。
-     buildId 缺失 = 线上是更老的代码包（连 buildId 这行代码都没有），
-     buildId 存在但和 EXPECTED_BUILD 不同 = 代码包传上去了但版本不是最新的那一份。 */
-  let pingJson = null;
-  try { pingJson = JSON.parse(ping.text); } catch (e) {}
-  const EXPECTED_BUILD = 'v2-pathfix-20261010-1030';
-  if (pingJson && pingJson.buildId) {
+  const alive = pingProbe.pathOk ? pingProbe : pingProbe;
+  line(true, '2. /ping（代码已跑起来）', (alive.pathMs || alive.queryMs) + 'ms  ' + (alive.pathJson ? JSON.stringify(alive.pathJson) : JSON.stringify(alive.queryJson)).slice(0, 120));
+
+  /* 2.1 路径通道状态：这是本次排查的核心 */
+  if (pingProbe.pathOk && pingProbe.pathJson && pingProbe.pathJson.pong) {
+    line(true, '2.1 路径识别', '正常（/ping 能返回 pong）→ 前端可继续用 /state、/upload 路径');
+  } else {
+    line(false, '2.1 路径识别', 'FC 拿不到真实路径，所有子路径都被当成根路径');
+    console.log('     → 这是根因：后端 event 里没有路径字段，/state /upload /info 全部落到 \'/\'，');
+    console.log('       所以「迁移照片到国内云」必然全部失败。');
+    console.log('     → 新版后端支持 __p 参数通道绕过，前端已自动改用它，功能不受影响。');
+    console.log('     → 请上传最新版 jjll-api.zip 并点「部署」，让线上也支持 __p 通道。');
+    console.log('     → 现场信息：打开 ' + base + '/  响应里的 diag 字段会显示后端实际收到的 event 结构。');
+  }
+  if (pingProbe.queryOk && pingProbe.queryJson && pingProbe.queryJson.pong) {
+    line(true, '2.2 __p 备用通道', '可用（/?__p=%2Fping 返回 pong）→ 前端已走这条通道');
+  } else {
+    line(false, '2.2 __p 备用通道', '不可用（线上后端还没支持）→ 前端会全部失败，必须先更新后端代码包');
+  }
+
+  /* 2.5 版本自检：后端每次改代码都会换 buildId */
+  const pingJson = pingProbe.pathJson || pingProbe.queryJson || {};
+  const EXPECTED_BUILD = 'v3-diag-20261010-1100';
+  if (pingJson.buildId) {
     if (pingJson.buildId === EXPECTED_BUILD) {
       line(true, '2.5 代码包版本', 'buildId=' + pingJson.buildId + '（✅ 与本地最新一致）');
     } else {
       line(false, '2.5 代码包版本', 'buildId=' + pingJson.buildId + '（❌ 本地最新是 ' + EXPECTED_BUILD + '）');
       console.log('');
-      console.log('  → 线上跑的是旧版本代码包，说明你上传的那份不是最新的，或者传上去后没点「部署」。');
+      console.log('  → 线上跑的是旧版本代码包。');
       console.log('  → 本地最新代码包：C:\\Users\\11637\\WorkBuddy\\20260504223628\\jijilili-app\\aliyun-fc-proxy\\jjll-api\\jjll-api.zip');
-      console.log('  → 请重新上传该文件，上传完务必点「部署」按钮（这一步不做，线上永远跑旧代码）。');
+      console.log('  → 请重新上传该文件，上传完务必点「部署」按钮。');
       console.log('');
       process.exit(1);
     }
   } else {
-    line(false, '2.5 代码包版本', '响应里没有 buildId → 线上是更老的代码包（本次上传没生效）');
+    line(false, '2.5 代码包版本', '响应里没有 buildId → 线上是更老的代码包');
     console.log('     → 重新上传最新 jjll-api.zip 并点「部署」。');
     process.exit(1);
   }
 
-  /* 3. / 自检：连 OSS 看配置 */
+  /* 3. / 自检：连 OSS 看配置（顺便把后端看到的 event 现场打出来） */
   const self = await get('/', { timeout: 25000 });
   if (!self.ok) {
     line(false, '3. / 自检（OSS 配置）', self.err + '（' + self.ms + 'ms）');
@@ -170,37 +212,63 @@ function isTokenBlocked(res) {
   } else {
     line(false, '3. / 自检（OSS 配置）', self.text.slice(0, 200));
   }
+  /* 后端新版会在根路径回传 diag（它实际收到的 event 结构），这是定位路径问题的关键现场 */
+  if (selfJson && selfJson.diag && selfJson.diag.event) {
+    const d = selfJson.diag;
+    console.log('');
+    console.log('  🔎 后端看到的请求现场（diag）：');
+    console.log('     rawPathname=' + d.rawPathname + '  resolvedPath=' + d.resolvedPath +
+      '  viaQueryRoute=' + d.viaQueryRoute);
+    console.log('     event 顶层字段: ' + JSON.stringify(d.event.eventTopKeys));
+    console.log('     headers: ' + JSON.stringify(d.event.headerKeys));
+    if (d.event.stringValues && d.event.stringValues.length) {
+      console.log('     event 里的字符串值: ' + JSON.stringify(d.event.stringValues));
+    }
+    if (d.resolvedPath === '/') {
+      console.log('     ⚠️ resolvedPath 是 "/" —— 后端完全没拿到真实路径，这就是迁移照片失败的根因。');
+    }
+    console.log('');
+  }
 
-  /* 4. 状态读写（用一个测试家庭码，不影响真实数据） */
+  /* 4. 状态读写（用一个测试家庭码 probe_test，不影响真实数据）
+     同样双通道：路径通道 /state?code=x 与参数通道 /?__p=/state&code=x */
   const code = 'probe_test';
-  const getState = await get('/state?code=' + code);
-  /* 线上若仍是旧代码，event.path 解析问题会让所有子路径都返回根路径自检 JSON。
-     这里识别出来并明确提示"新代码包还没部署"，避免误判成"OSS 坏了"。 */
+  const stateProbe = await probeState();
+  function probeState() {
+    const p = get('/state?code=' + code, { timeout: 20000 });
+    const q = get('/?__p=' + encodeURIComponent('/state') + '&code=' + code, { timeout: 20000 });
+    return Promise.all([p, q]).then((arr) => ({ byPath: arr[0], byQuery: arr[1] }));
+  }
+  /* 命中根路径自检 = 请求被当成 '/' 处理了（路由失效），不能当成"OSS 坏了" */
   const routedToRoot = (r) => r && r.status === 200 && /"service"\s*:\s*"jijilili-backend"/.test(r.text || '');
-  if (routedToRoot(getState)) {
-    line(false, '4. /state 路由', '返回的却是根路径自检 → 线上还是旧代码包');
+
+  const useQuery = !isStateOk(stateProbe.byPath) && isStateOk(stateProbe.byQuery);
+  const chosen = useQuery ? stateProbe.byQuery : stateProbe.byPath;
+  const whichCh = useQuery ? '__p 参数通道' : '路径通道';
+
+  function isStateOk(r) {
+    if (!r || !r.ok || r.status !== 200) return false;
+    if (routedToRoot(r)) return false;
+    try { const j = JSON.parse(r.text); return typeof j.ts === 'number'; } catch (e) { return false; }
+  }
+
+  if (isStateOk(chosen)) {
+    line(true, '4. 读取 /state（' + whichCh + '）', chosen.ms + 'ms  ' + chosen.text.slice(0, 80));
+  } else {
+    line(false, '4. 读取 /state', '两种通道都没读到数据');
     console.log('');
-    console.log('  → 后端能跑通，但你的 FC 上部署的 index.js 缺路由修复：');
-    console.log('     所有子路径（/state /info /upload）都被错当成根路径，所以「迁移照片」会全部失败。');
+    console.log('  路径通道   : ' + (routedToRoot(stateProbe.byPath) ? '返回根路径自检（路由失效）'
+      : (stateProbe.byPath.err || 'HTTP ' + stateProbe.byPath.status + ' ' + (stateProbe.byPath.text || '').slice(0, 90))));
+    console.log('  __p 通道   : ' + (routedToRoot(stateProbe.byQuery) ? '返回根路径自检（线上后端还不支持 __p）'
+      : (stateProbe.byQuery.err || 'HTTP ' + stateProbe.byQuery.status + ' ' + (stateProbe.byQuery.text || '').slice(0, 90))));
     console.log('');
-    console.log('  ✅ 解决办法：');
-    console.log('     1) FC「代码」页 → 上传代码包，选这个文件（选完看文件名对不对）：');
-    console.log('        C:\\Users\\11637\\WorkBuddy\\20260504223628\\jijilili-app\\aliyun-fc-proxy\\jjll-api\\jjll-api.zip');
-    console.log('     2) 上传完必须点右下角「部署」——只上传不部署，线上还是旧代码，这是最容易漏的一步');
-    console.log('     3) 部署完成后打开 xxx.fcapp.run/ping，返回的 buildId 应为 v2-pathfix-20261010-1030');
-    console.log('     4) 再跑一次本脚本，第 4、5 项就会变成 ✅');
+    console.log('  ✅ 解决办法：上传最新版后端代码包（支持 __p 通道）并点「部署」：');
+    console.log('     C:\\Users\\11637\\WorkBuddy\\20260504223628\\jijilili-app\\aliyun-fc-proxy\\jjll-api\\jjll-api.zip');
     console.log('');
-    console.log('  → 另外可访问 xxx.fcapp.run/diag 查看后端实际收到的请求结构（辅助定位）。');
-    console.log('  → 本次不用管前端 git push，先把后端代码包传上去。');
     process.exit(1);
   }
-  if (getState.ok && getState.status === 200) {
-    line(true, '4. 读取 /state', getState.ms + 'ms  ' + getState.text.slice(0, 80));
-  } else {
-    line(false, '4. 读取 /state', (getState.err || ('HTTP ' + getState.status)) + '  ' + (getState.text || '').slice(0, 100));
-  }
 
-  const postState = await get('/state?code=' + code, {
+  const postState = await get('/?__p=' + encodeURIComponent('/state') + '&code=' + code, {
     method: 'POST',
     body: JSON.stringify({ ts: 0, data: { _probe: Date.now() } })
   });
@@ -218,9 +286,14 @@ function isTokenBlocked(res) {
   line(putOk, '5. 写入 /state（CAS）', putMsg);
 
   console.log('');
-  const allOk = putOk && ping.status === 200 && !routedToRoot(getState);
+  const allOk = putOk && pingJson.buildId === EXPECTED_BUILD && (isStateOk(stateProbe.byPath) || isStateOk(stateProbe.byQuery));
   if (allOk) {
     console.log('全部通过 ✅ 后端已就绪。');
+    if (useQuery) {
+      console.log('');
+      console.log('⚠️ 注意：你的 FC 拿不到真实路径，前端已自动改用 __p 参数通道，功能不受影响。');
+      console.log('   建议上传最新版后端代码包，让 /state、/upload 等路径也能直接用。');
+    }
     console.log('');
     console.log('接下来在网页端：');
     console.log('  1. ⚙️ 右上角齿轮 → 填「国内云 API 地址」= ' + base);
