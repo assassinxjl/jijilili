@@ -1,17 +1,16 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-page-node-id="hZkj38zBve24IuCpjM1tIB">
-<head data-page-node-id="16jAIx3bc53gD5rc7J4LAC">
-<meta charset="UTF-8" data-page-node-id="pImqbiAS1CcCoOSE687TPI">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" data-page-node-id="bAfhIeqmg7eNDQVvSxQPOP">
-<meta name="apple-mobile-web-app-capable" content="yes" data-page-node-id="feX6qWEFUtZOGJwWhBpaQG">
-<meta name="mobile-web-app-capable" content="yes" data-page-node-id="v6yXUDaf5c2G0GWM5wuE2e">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" data-page-node-id="Uiu5eOGLMnRa0SCthYAW4t">
-<meta name="apple-mobile-web-app-title" content="吉吉利利" data-page-node-id="B77U82DSnLDaUdIFPL1UQj">
-<meta name="theme-color" content="#FF8FA3" data-page-node-id="JXBUc9adVmMrWoAJ8CFtm9">
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="吉吉利利">
+<meta name="theme-color" content="#FF8FA3">
 <title>吉吉利利 · 家庭管理工作台</title>
-<link rel="manifest" href="manifest.webmanifest" data-page-node-id="9ggzL72ftIgkcpiQWcq2gA">
-<link rel="apple-touch-icon" href="icon-512.png" data-page-node-id="9RymIYdK5QJVGDszsfv7ZE">
-<!-- 同步层已改为直接调用 Supabase REST（fetch），无需外部 CDN，国内网络更稳 -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
   :root{
     --bg:#FFF7ED;
@@ -210,15 +209,6 @@
     display:flex;align-items:center;justify-content:center;
   }
   /* 国内云配置引导条 */
-  .cloud-tip{
-    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
-    background:#EAF4FF;border:1px solid #B9DBFF;color:#1F4E79;
-    border-radius:14px;padding:10px 12px;margin-bottom:14px;font-size:13px;line-height:1.6;
-    box-shadow:var(--shadow);
-  }
-  .cloud-tip .ct-close{
-    margin-left:auto;border:none;background:transparent;color:#5B87B5;font-size:16px;cursor:pointer;padding:0 4px;flex-shrink:0;
-  }
 
   .card{
     background:var(--card);
@@ -436,187 +426,299 @@
     .modal-box{padding:18px 16px 14px 16px;}
     .crumb .l2name{font-size:19px;}
   }
+
+  /* ===================== 玩玩玩玩 › 到此一游 ===================== */
+  .pl-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+  .pl-stats{display:flex;gap:22px;flex-wrap:wrap;}
+  .pl-stat{font-size:13.5px;color:var(--text-light);}
+  .pl-stat b{font-size:30px;font-weight:800;color:var(--accent-dark);margin:0 5px;vertical-align:-2px;}
+  .pl-actions{display:flex;gap:8px;flex-wrap:wrap;}
+  .pl-globe-card{padding:14px 10px 10px;background:linear-gradient(180deg,#FFF1F4 0%,#EAF6FD 100%);}
+  .pl-globe-wrap{width:100%;max-width:520px;aspect-ratio:1/1;margin:0 auto;}
+  .pl-globe{width:100%;height:100%;display:block;touch-action:pan-y;cursor:grab;user-select:none;-webkit-user-select:none;}
+  .pl-globe:active{cursor:grabbing;}
+  .pl-detail{padding:14px;}
+  .pl-photos{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px;margin-bottom:8px;}
+  .pl-photo{flex:0 0 min(100%,440px);aspect-ratio:4/3;border-radius:20px;overflow:hidden;border:none;padding:0;background:#F3ECE6;scroll-snap-align:start;cursor:zoom-in;}
+  .pl-photo img{width:100%;height:100%;object-fit:cover;display:block;}
+  .pl-d-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+  .pl-d-head h3{margin:0;font-size:20px;}
+  .pl-date{font-size:12.5px;color:var(--text-light);}
+  .pl-quote{margin:10px 0 4px;padding:10px 14px;background:#FFF5E9;border-radius:14px;line-height:1.7;font-size:14.5px;}
+  .pl-d-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+  .pl-members{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+  .pl-chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;background:#FFF1E4;border-radius:999px;padding:3px 10px 3px 7px;}
+  .pl-chip i,.pl-mchip i{width:9px;height:9px;border-radius:50%;display:inline-block;}
+  .pl-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;}
+  .pl-card{background:var(--card);border-radius:22px;box-shadow:var(--shadow);overflow:hidden;cursor:pointer;transition:transform .15s;}
+  .pl-card:active{transform:scale(.985);}
+  .pl-cover{position:relative;aspect-ratio:4/3;background:#F3ECE6;}
+  .pl-cover img{width:100%;height:100%;object-fit:cover;display:block;}
+  .pl-nocover{display:flex;align-items:center;justify-content:center;font-size:40px;width:100%;height:100%;}
+  .pl-badge{position:absolute;right:10px;bottom:10px;background:rgba(0,0,0,.45);color:#fff;font-size:12px;border-radius:999px;padding:3px 9px;}
+  .pl-info{padding:12px 14px 14px;}
+  .pl-name{font-weight:800;font-size:16px;}
+  .pl-nopos{font-size:11px;font-weight:600;color:var(--text-light);background:#F3ECE6;border-radius:999px;padding:1px 7px;margin-left:4px;}
+  .pl-note-s{margin-top:6px;font-size:13.5px;line-height:1.6;color:var(--text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .pl-empty{text-align:center;padding:28px 16px 30px;}
+  .pl-empty-t{font-size:18px;font-weight:800;margin:6px 0 4px;}
+  .pl-geo-ok{color:var(--green-dark);font-size:12.5px;}
+  .pl-geo-no{color:var(--text-light);font-size:12.5px;}
+  .pl-geo-sub{display:block;color:var(--text-light);font-size:11.5px;margin-top:2px;}
+  #plGeoState{min-height:18px;margin-top:6px;}
+  #plGeoState a{color:var(--accent-dark);font-size:12.5px;font-weight:700;}
+  .pl-chips{display:flex;gap:8px;flex-wrap:wrap;}
+  .pl-mchip{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--border);background:#fff;border-radius:999px;padding:6px 13px 6px 10px;font-size:13px;cursor:pointer;}
+  .pl-mchip.on{border-color:var(--accent);background:#FFE9EE;font-weight:700;}
+  .pl-pthumb{width:84px;height:84px;border-radius:14px;}
+  .pl-addtile{width:84px;height:84px;border-radius:14px;border:2px dashed var(--accent);background:#FFF5F7;color:var(--accent-dark);font-size:26px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;}
+  .pl-addtile span{font-size:11.5px;font-weight:600;}
+  .pl-pick-wrap{width:100%;max-width:360px;aspect-ratio:1/1;margin:8px auto 0;}
+  .pl-flip-box{text-align:center;}
+  .pl-flip-card{background:#fff;border-radius:24px;overflow:hidden;box-shadow:var(--shadow);text-align:left;transform-origin:center;}
+  .pl-flip-card.flip{animation:plflip .55s cubic-bezier(.2,.8,.3,1);}
+  @keyframes plflip{from{transform:perspective(900px) rotateY(88deg);opacity:0;}to{transform:perspective(900px) rotateY(0);opacity:1;}}
+  .pl-flip-img{aspect-ratio:4/3;background:#F3ECE6;}
+  .pl-flip-img img{width:100%;height:100%;object-fit:cover;display:block;}
+  .pl-flip-body{padding:12px 16px 16px;}
+  @media (max-width:820px){ .pl-stat b{font-size:26px;} .pl-list{grid-template-columns:1fr;} }
 </style>
 </head>
-<body data-page-node-id="8qxVYgN6a6YUO8kuU9HzLF">
+<body>
 
-<div class="app" id="app" data-page-node-id="Qv9KwDGJIocADAcLi8gDZ0">
+<div class="app" id="app">
   <!-- ===== 侧边栏 ===== -->
-  <aside class="sidebar" id="sidebar" data-page-node-id="drUDGH8HI5fGh9sc7s9O6W">
-    <div class="sidebar-header" data-page-node-id="W6lD7niPuB23HVC0mY7QF8">
-      <span class="sidebar-logo" data-page-node-id="RJ1WtWyNWmEOikml79EQ5n">🍚</span>
-      <span class="sidebar-title" data-page-node-id="Fm57IyGQ6M8rFTIH5fdDzB">吉吉利利</span>
-      <button class="collapse-btn" id="collapseBtn" title="折叠/展开" data-page-node-id="P0E02x0LLccWkMbt4PRCMC">◀</button>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-logo">🍚</span>
+      <span class="sidebar-title">吉吉利利</span>
+      <button class="collapse-btn" id="collapseBtn" title="折叠/展开">◀</button>
     </div>
-    <nav class="nav-tree" id="navTree" data-page-node-id="APYbPP462uIz67pEDAAgdE"></nav>
-    <div class="sidebar-footer" data-page-node-id="cSJv45vOIGqZ47EUERorXC">
-      <button class="sidebar-footer-btn" id="mgmtBtn" data-page-node-id="mGHOjQHDXpxin1kEH9ESE4"><span data-page-node-id="C0eNigjzds2JE9KBXOLg71">⚙️</span><span class="label-text" data-page-node-id="zzPGllSFCyKIPP3gm3eDGy">模块管理</span></button>
-      <button class="sidebar-footer-btn" id="aboutBtn" data-page-node-id="WMKGaKKaf9Ch6E4e0DNO4z"><span data-page-node-id="NVDrLF0Q5VFed2cC5yErWb">ℹ️</span><span class="label-text" data-page-node-id="YoOfPQK4oJr03EtRlE2vLZ">关于 & 数据</span></button>
+    <nav class="nav-tree" id="navTree"></nav>
+    <div class="sidebar-footer">
+      <button class="sidebar-footer-btn" id="mgmtBtn"><span>⚙️</span><span class="label-text">模块管理</span></button>
+      <button class="sidebar-footer-btn" id="aboutBtn"><span>ℹ️</span><span class="label-text">关于 & 数据</span></button>
     </div>
   </aside>
 
   <!-- ===== 主内容 ===== -->
-  <main class="main" id="main" data-page-node-id="j0dI9yXxqiBRNOkquF1QkC">
-    <div class="topbar" data-page-node-id="a0jqmh3qgY6dpEt6cVbXQN">
-      <button class="menu-toggle" id="menuToggle" aria-label="打开菜单" data-page-node-id="EZcHDTSDzWTJAddu72KSMM">☰</button>
-      <div class="crumb" id="crumb" data-page-node-id="gE9e2Os2zQSnHFryreKPYQ">吃吃吃吃 <span class="l2name" data-page-node-id="xW3PszRxPLNkbKVXQC8nVa">冰箱食材</span></div>
-      <div class="topbar-right" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;" data-page-node-id="foJUlTfrQJUyWAcuK0mS0F">
-        <div class="user-box" data-page-node-id="Q4nrVCRNEDMvCQfmgdSrC5">
-          <span class="user-dot" id="userDot" data-page-node-id="zCzIKw9HszSGMXDQaCC8KA"></span>
-          <select class="user-select" id="userSelect" data-page-node-id="wSXPqDLckWjzIXgziC7AV5"></select>
-          <button class="user-add-btn" id="userAddBtn" title="添加家庭成员" data-page-node-id="sI07bpzQCZOWwHuPrm2iLa">＋</button>
-          <button class="user-del-btn" id="userDelBtn" title="删除当前成员" data-page-node-id="va3vtZ5WDJ8kdg2sv4K2ZR">－</button>
+  <main class="main" id="main">
+    <div class="topbar">
+      <button class="menu-toggle" id="menuToggle" aria-label="打开菜单">☰</button>
+      <div class="crumb" id="crumb">吃吃吃吃 <span class="l2name">冰箱食材</span></div>
+      <div class="topbar-right" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <div class="user-box">
+          <span class="user-dot" id="userDot"></span>
+          <select class="user-select" id="userSelect"></select>
+          <button class="user-add-btn" id="userAddBtn" title="添加家庭成员">＋</button>
+          <button class="user-del-btn" id="userDelBtn" title="删除当前成员">－</button>
         </div>
-        <button class="top-settings-btn" id="topSettingsBtn" title="接口与存储设置" data-page-node-id="ugQ0EacWeypGhB0tSvUGWC">⚙️</button>
+        <button class="top-settings-btn" id="topSettingsBtn" title="接口与存储设置">⚙️</button>
       </div>
     </div>
-    <div id="cloudTipHost" data-page-node-id="OYISXylRCCvYOeHFTLAmeL"></div>
-    <div id="content" data-page-node-id="8ZC5c1BTuDBs7EE78j8ZgJ"></div>
+    <div id="content"></div>
   </main>
-  <div class="sb-overlay" id="sbOverlay" data-page-node-id="D0qkHbEBFdV1gwiB9KCChy"></div>
+  <div class="sb-overlay" id="sbOverlay"></div>
 </div>
 
 <!-- ===== 弹窗：冰箱食材 增/改 ===== -->
-<div class="modal-mask" id="modalFridge" data-page-node-id="1azYZJy61BxYTGn4XpoVcV">
-  <div class="modal-box" data-page-node-id="0C2mku8mLkBsPyLUhpc8or">
-    <p class="modal-title" data-page-node-id="CtB74Wok63jpiQDzeOS9Pv">🧊 <span id="fridgeModalTitle" data-page-node-id="iXv5C3XvCaf2ClGMM6vJva">添加食材</span></p>
-    <div class="field-label" data-page-node-id="WRD1mSa191kQKjVtTe0hKX">名称</div>
-    <input class="field-input" id="fridgeName" placeholder="例如：鸡蛋" data-page-node-id="n6XWZNFqUOgRTEa6LuyPGw">
-    <div class="field-label" data-page-node-id="aJWtXacJh4J1pAv6DqllKx">保质期至</div>
-    <input class="field-input" id="fridgeExpiry" type="date" data-page-node-id="tmGSQAXh0CYO6NEX7eJWjw">
-    <div class="field-label" data-page-node-id="7VPV0doEc27PmslTr3bprE">分量 / 备注</div>
-    <input class="field-input" id="fridgeQty" placeholder="例如：6 个" data-page-node-id="jEXUbZNkjgHRPvOzNtEINq">
-    <div class="modal-actions" data-page-node-id="APpessHLlen3Y6MpCUHLMM">
-      <button class="btn btn-ghost" onclick="closeModal('modalFridge')" data-page-node-id="f7XJXBGwDlSQbQ1LFbRI4l">取消</button>
-      <button class="btn btn-primary" id="fridgeSaveBtn" data-page-node-id="H5OnhmgOgPCqztpSnSMDHQ">保存</button>
+<div class="modal-mask" id="modalFridge">
+  <div class="modal-box">
+    <p class="modal-title">🧊 <span id="fridgeModalTitle">添加食材</span></p>
+    <div class="field-label">名称</div>
+    <input class="field-input" id="fridgeName" placeholder="例如：鸡蛋">
+    <div class="field-label">保质期至</div>
+    <input class="field-input" id="fridgeExpiry" type="date">
+    <div class="field-label">分量 / 备注</div>
+    <input class="field-input" id="fridgeQty" placeholder="例如：6 个">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modalFridge')">取消</button>
+      <button class="btn btn-primary" id="fridgeSaveBtn">保存</button>
     </div>
   </div>
 </div>
 
 <!-- ===== 弹窗：饮食记录 ===== -->
-<div class="modal-mask" id="modalRecord" data-page-node-id="XiD97l9jin8XTIYEx3ME5A">
-  <div class="modal-box" data-page-node-id="UxSb7juPBCqn9GjC0z4xmz">
-    <p class="modal-title" data-page-node-id="UqFVXTpxYKBvdwJXvpUM6u">🍽️ 记录一餐</p>
-    <div class="field-label" data-page-node-id="ODDeALw0KsuCzYMeNJvGfk">日期</div>
-    <input class="field-input" id="recDate" type="date" data-page-node-id="Ca9iy27GUHKNpIungzC0Xy">
-    <div class="field-label" data-page-node-id="g01idP9fo4W6dSCGzGkaCD">类型</div>
-    <div class="seg" id="recTypeSeg" data-page-node-id="JiBG4o1grk6kz3wDhrgslT">
-      <button data-v="在家" class="active" data-page-node-id="lq71yvFt2NTTTPHHPvvN6Y">🏠 在家</button>
-      <button data-v="外食" data-page-node-id="hQ44Yv4iDd2Y4i7v1BSB6Q">🍜 外食</button>
+<div class="modal-mask" id="modalRecord">
+  <div class="modal-box">
+    <p class="modal-title">🍽️ 记录一餐</p>
+    <div class="field-label">日期</div>
+    <input class="field-input" id="recDate" type="date">
+    <div class="field-label">类型</div>
+    <div class="seg" id="recTypeSeg">
+      <button data-v="在家" class="active">🏠 在家</button>
+      <button data-v="外食">🍜 外食</button>
     </div>
-    <div class="field-label" data-page-node-id="JDXqajSAWgZALdDvsXLdlE">备注</div>
-    <input class="field-input" id="recNote" placeholder="吃了什么呀～" data-page-node-id="f9bQOx4kmgBaojDNxHO52W">
-    <div class="field-label" data-page-node-id="sC1rw23PUtGkmQhu45zTmN">照片（可选，最多 3 张）</div>
-    <input class="field-input" id="recPhoto" type="file" accept="image/*" multiple data-page-node-id="rcn7QdOiNl7iUDpLmpSxFJ">
-    <div class="photo-thumbs" id="recPhotoThumbs" data-page-node-id="tknDMaGFV0Mg0ThYieHabl"></div>
-    <div class="photo-count-hint" id="recPhotoHint" data-page-node-id="QD99T3co3cGWbC3X1PzK7V">还可以再添加 3 张</div>
-    <div class="modal-actions" data-page-node-id="J6lCXirR6czSdBPuVhLKu9">
-      <button class="btn btn-ghost" onclick="closeModal('modalRecord')" data-page-node-id="FZfZY5wnzAiKRhjjatnoKi">取消</button>
-      <button class="btn btn-primary" id="recSaveBtn" data-page-node-id="kE8lTzt40FqtclACV4f1TL">保存记录</button>
+    <div class="field-label">备注</div>
+    <input class="field-input" id="recNote" placeholder="吃了什么呀～">
+    <div class="field-label">照片（可选，最多 3 张）</div>
+    <input class="field-input" id="recPhoto" type="file" accept="image/*" multiple>
+    <div class="photo-thumbs" id="recPhotoThumbs"></div>
+    <div class="photo-count-hint" id="recPhotoHint">还可以再添加 3 张</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modalRecord')">取消</button>
+      <button class="btn btn-primary" id="recSaveBtn">保存记录</button>
     </div>
   </div>
 </div>
 
 <!-- ===== 大图浏览灯箱 ===== -->
-<div class="lb-mask" id="modalLightbox" data-page-node-id="eOEJHx0OtAW5FmFqE3ZyFD">
-  <button class="lb-close" id="lbClose" aria-label="关闭" data-page-node-id="ywXznuGKmhTvaSRRU9PtTr">✕</button>
-  <img class="lb-img" id="lbImg" alt="记录照片" data-page-node-id="gOT0qQ3BBmadB0brOLOjN1">
-  <div class="lb-meta" id="lbMeta" data-page-node-id="DBAO3qkU6tTquHNkme1kAB"></div>
-  <div class="lb-bar" data-page-node-id="L5M9tMoEtY71OWrpf9nmv7">
-    <button class="lb-btn" id="lbPrev" aria-label="上一张" data-page-node-id="XRraaCatbmx1zo90x8L4zS">‹</button>
-    <span class="lb-count" id="lbCount" data-page-node-id="qeV3mBX91QGRGo6mqV3q5L"></span>
-    <button class="lb-btn" id="lbNext" aria-label="下一张" data-page-node-id="2blB5NodLWMkPnMRZ4Z9Q1">›</button>
+<div class="lb-mask" id="modalLightbox">
+  <button class="lb-close" id="lbClose" aria-label="关闭">✕</button>
+  <img class="lb-img" id="lbImg" alt="记录照片">
+  <div class="lb-meta" id="lbMeta"></div>
+  <div class="lb-bar">
+    <button class="lb-btn" id="lbPrev" aria-label="上一张">‹</button>
+    <span class="lb-count" id="lbCount"></span>
+    <button class="lb-btn" id="lbNext" aria-label="下一张">›</button>
   </div>
 </div>
 
 <!-- ===== 弹窗：AI 设置 ===== -->
-<div class="modal-mask" id="modalApi" data-page-node-id="MlyyRh6n06VEgub178JR0E">
-  <div class="modal-box" data-page-node-id="aAF01kM0m4QKtjLAgkWGOI">
-    <p class="modal-title" data-page-node-id="QokOiwi8MFV2EOUMnsWpsl">⚙️ 接口与存储设置</p>
-    <div class="mini-hint" data-page-node-id="UavzdxeoOFyyUoJKzvBFd8">支持任意 OpenAI 兼容接口（如 OpenAI / DeepSeek / Moonshot 等），密钥仅保存在本机浏览器 localStorage 中，不会上传任何服务器。</div>
-    <div class="mini-hint" style="margin-top:6px;color:var(--text-light);" data-page-node-id="3WHKWyFjqC6yRcH0OBgorZ">若浏览器提示 Failed to fetch（跨域被拦）：可在下方「代理地址」填入一个代理（如 Cloudflare Worker）；留空则尝试走 Supabase 函数代理（需部署 ai-proxy，且仅对部分接口有效）。</div>
-    <div class="field-label" data-page-node-id="tw5ObrERSqGZJaDtZtFSE2">接口地址 Endpoint</div>
-    <input class="field-input" id="apiEndpoint" placeholder="https://api.openai.com/v1/chat/completions" data-page-node-id="uElLofoFx4zeNg6ht1xa7r">
-    <div class="field-label" data-page-node-id="s8aceGgcfSlsROFoaTYMov">API Key</div>
-    <input class="field-input" id="apiKey" placeholder="sk-xxxxxxxx" type="password" data-page-node-id="cDtBhnWEiHA2alpgtwADgJ">
-    <div class="field-label" data-page-node-id="KoeeJ125S23HzzGO30J77X">模型名称 Model</div>
-    <input class="field-input" id="apiModel" placeholder="gpt-3.5-turbo" data-page-node-id="n0RIfYCbPRNBjsvDeWYoGo">
-    <div class="field-label" data-page-node-id="wNbO0KmybD2mMKhcpdZOOu">☁️ 国内云 API 地址（强烈推荐，解决照片裂图 / 同步断开）</div>
-    <input class="field-input" id="jjllApi" placeholder="https://jjll-api-xxxxx.cn-hangzhou.fcapp.run" data-page-node-id="OBKcVrYpeiOiqh461T1R2C">
-    <div class="field-label" data-page-node-id="6SHN2uiyGwz2F3tNpkd0WO">访问口令（若后端设置了 JJLL_TOKEN 才填）</div>
-    <input class="field-input" id="jjllToken" placeholder="留空表示后端未设口令" type="password" data-page-node-id="VlcFWXx1ETvWEFQbC2UhoV">
-    <div class="mini-hint" style="margin-top:6px;color:var(--text-light);" data-page-node-id="Ul8rBzDbm5egOM2PzA7Aj0">
-      supabase.co 在国内很多网络下连不上（实测 TCP 被重置）。填入阿里云函数计算地址后，
-      家庭数据与照片全部改走国内节点（OSS 存储，FC 内网写入），手机任何网络都能看图。
-      地址会随家庭数据同步，填一次所有设备生效；口令仅存本机。
+<div class="modal-mask" id="modalApi">
+  <div class="modal-box">
+    <p class="modal-title">⚙️ 接口与存储设置</p>
+    <div class="mini-hint">支持任意 OpenAI 兼容接口（如 OpenAI / DeepSeek / Moonshot 等），密钥仅保存在本机浏览器 localStorage 中，不会上传任何服务器。</div>
+    <div class="mini-hint" style="margin-top:6px;color:var(--text-light);">若浏览器提示 Failed to fetch（跨域被拦）：可在下方「代理地址」填入一个代理（如 Cloudflare Worker）；留空则尝试走 Supabase 函数代理（仅用于 AI 推荐，与数据存储无关）。</div>
+    <div class="field-label">接口地址 Endpoint</div>
+    <input class="field-input" id="apiEndpoint" placeholder="https://api.openai.com/v1/chat/completions">
+    <div class="field-label">API Key</div>
+    <input class="field-input" id="apiKey" placeholder="sk-xxxxxxxx" type="password">
+    <div class="field-label">模型名称 Model</div>
+    <input class="field-input" id="apiModel" placeholder="gpt-3.5-turbo">
+    <div class="field-label">☁️ 阿里云 API 地址（已内置，一般无需修改；留空即用默认）</div>
+    <input class="field-input" id="jjllApi" placeholder="https://jjll-api-xxxxx.cn-hangzhou.fcapp.run">
+    <div class="field-label">访问口令（若后端设置了 JJLL_TOKEN 才填）</div>
+    <input class="field-input" id="jjllToken" placeholder="留空表示后端未设口令" type="password">
+    <div class="mini-hint" style="margin-top:6px;color:var(--text-light);">
+      家庭数据与照片现在全部存放在阿里云（FC + OSS），不再写入 Supabase。
+      此地址仅保存在本机、不参与同步；留空即使用代码内置的默认地址。口令同样仅存本机。
     </div>
-    <div class="modal-actions" style="margin-top:8px;" data-page-node-id="B8wy6bSqWxDopKnPCKXysu">
-      <button class="btn btn-ghost" id="cloudMigrateBtn" data-page-node-id="1h9pOaLwo5zGL2NfYmFBss">🚚 迁移照片到国内云</button>
-      <button class="btn btn-ghost" id="cloudTestBtn" data-page-node-id="Zx8Kq2TbNcVmLpRd4sWfA7">🌐 云端连通自检</button>
+    <div class="modal-actions" style="margin-top:8px;">
+      <button class="btn btn-ghost" id="cloudMigrateBtn">🚚 迁移旧照片到阿里云</button>
+      <button class="btn btn-ghost" id="cloudTestBtn">🌐 云端连通自检</button>
     </div>
-    <div class="mini-hint" id="cloudTestOut" style="margin-top:6px;color:var(--text-light);white-space:pre-wrap;font-size:12px;" data-page-node-id="Hq3NvBzTkY7WmEc9RuXpLd"></div>
-    <div class="field-label" data-page-node-id="Sk7a5rWWRWpgwnjLBP0ceq">代理地址（可选，解决跨域）</div>
-    <input class="field-input" id="apiProxy" placeholder="https://xxx.workers.dev/  或留空走 Supabase 代理" data-page-node-id="OIH1js9049zWQf4SvEwsWQ">
-    <div class="field-label" data-page-node-id="QZO3eGxSYbMCDFtkCfI3S0">🖼️ 图片代理地址（可选，多个用逗号分隔）</div>
-    <input class="field-input" id="photoProxy" placeholder="https://jijilili-photo.xxx.workers.dev" data-page-node-id="oSCl6Vgcvrk5r6CsBnOqDp">
-    <div class="mini-hint" style="margin-top:6px;color:var(--text-light);" data-page-node-id="OA4vUxf20PDC9I2TlzKu60">
-      照片原图存在 Supabase，部分网络连不上该域名会显示不出来。现在每张照片会额外同步一张小缩略图，
-      <b data-page-node-id="YqnFb8q6aFbu9EiyHZyrBP">只要数据能同步就一定能看到图</b>；网络好时再自动换成高清。填入图片代理后，高清图改走代理加载（更快更稳），
+    <div class="mini-hint" id="cloudTestOut" style="margin-top:6px;color:var(--text-light);white-space:pre-wrap;font-size:12px;"></div>
+    <div class="field-label">代理地址（可选，解决跨域）</div>
+    <input class="field-input" id="apiProxy" placeholder="https://xxx.workers.dev/  或留空">
+    <div class="field-label">🖼️ 图片代理地址（可选，多个用逗号分隔）</div>
+    <input class="field-input" id="photoProxy" placeholder="https://jijilili-photo.xxx.workers.dev">
+    <div class="mini-hint" style="margin-top:6px;color:var(--text-light);">
+      新照片直接存阿里云；旧照片（原存在 Supabase）会自动迁移。每张照片还会额外同步一张小缩略图，
+      <b>只要数据能同步就一定能看到图</b>；网络好时再自动换成高清。填入图片代理后，高清图改走代理加载（更快更稳），
       失败会自动回退直连 → 本机副本。该地址会随家庭数据同步，填一次全家生效。
     </div>
-    <div class="modal-actions" style="margin-top:8px;" data-page-node-id="AFWovdfjyVDlqarYBJh7vg">
-      <button class="btn btn-ghost" id="photoTestBtn" data-page-node-id="rClTjMSBtdtao2bQOrtUi1">🔍 图片自检</button>
-      <button class="btn btn-ghost" id="thumbRebuildBtn" data-page-node-id="ifYribCoyE0BDH2GEDid1j">🧩 补建缩略图</button>
+    <div class="modal-actions" style="margin-top:8px;">
+      <button class="btn btn-ghost" id="photoTestBtn">🔍 图片自检</button>
+      <button class="btn btn-ghost" id="thumbRebuildBtn">🧩 补建缩略图</button>
     </div>
-    <div class="mini-hint" id="photoTestOut" style="margin-top:6px;color:var(--text-light);white-space:pre-wrap;" data-page-node-id="9IgMcjixIPHtDLeyryKHFj"></div>
-    <div class="modal-actions" data-page-node-id="6wR5v6T0MTbhhUc62iEEJ1">
-      <button class="btn btn-ghost" onclick="closeModal('modalApi')" data-page-node-id="JD7jamGSkPFVsrDFyf1FnH">取消</button>
-      <button class="btn btn-primary" id="apiSaveBtn" data-page-node-id="64kFgUXEIs7EHOcflppNdf">保存设置</button>
+    <div class="mini-hint" id="photoTestOut" style="margin-top:6px;color:var(--text-light);white-space:pre-wrap;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modalApi')">取消</button>
+      <button class="btn btn-primary" id="apiSaveBtn">保存设置</button>
     </div>
   </div>
 </div>
 
 <!-- ===== 弹窗：关于 ===== -->
-<div class="modal-mask" id="modalAbout" data-page-node-id="Ky0WcgGwFzDVVq8KiKNoiE">
-  <div class="modal-box" data-page-node-id="Hnw83v1Z2sncIDRyBEpqlL">
-    <p class="modal-title" data-page-node-id="mP1Kws67IhTf5fTkLCS0VO">ℹ️ 关于「吉吉利利」</p>
-    <div class="mini-hint" style="font-size:13px;line-height:1.9;" data-page-node-id="59LEJpynbt9K6ddkTpqTFq">
-      · 同一浏览器打开的多个标签页会自动实时同步数据（收纳、待办等）。<br data-page-node-id="85FRzDHS1xcNBoaA0gK6O4">
-      · 已开启「家庭共享码」后，输入相同家庭码即可在<b data-page-node-id="DRfNwd86Epu560mHsxzjgE">不同设备 / 不同浏览器之间实时同步</b>同一份数据；未设置家庭码时数据仅存本机，换设备请用「导出 / 导入数据」手动搬家。<br data-page-node-id="4HiCLn8uUCXhPLPRCVNsSi">
-      · 手机上可通过浏览器菜单「添加到主屏幕」把它变成一个图标，效果因手机浏览器而略有差异。<br data-page-node-id="FYm8jsZygny1GjB4U7wHAF">
+<div class="modal-mask" id="modalAbout">
+  <div class="modal-box">
+    <p class="modal-title">ℹ️ 关于「吉吉利利」</p>
+    <div class="mini-hint" style="font-size:13px;line-height:1.9;">
+      · 同一浏览器打开的多个标签页会自动实时同步数据（收纳、待办等）。<br>
+      · 已开启「家庭共享码」后，输入相同家庭码即可在<b>不同设备 / 不同浏览器之间实时同步</b>同一份数据；未设置家庭码时数据仅存本机，换设备请用「导出 / 导入数据」手动搬家。<br>
+      · 手机上可通过浏览器菜单「添加到主屏幕」把它变成一个图标，效果因手机浏览器而略有差异。<br>
       · 电脑上可把该 html 文件拖到桌面，双击即可用浏览器打开；也可为浏览器创建桌面快捷方式指向该文件。
     </div>
-    <div id="aboutCloudRow" class="mini-hint" style="margin-top:10px;padding:10px 12px;border:1px dashed #FFCF9B;background:#FFF6E9;border-radius:12px;font-size:13px;line-height:1.7;color:#8A5A20;" data-page-node-id="1AyM7tFYl8BSGaGFdLg8Ok">
-      照片在别的网络下显示不出来 / 同步总是断开？点右边按钮配置国内云即可解决。当前状态：<b id="aboutCloudState" data-page-node-id="XhIp86nY2DCUBO6LsaMNe0">检查中…</b>
+    <div id="aboutCloudRow" class="mini-hint" style="margin-top:10px;padding:10px 12px;border:1px dashed #FFCF9B;background:#FFF6E9;border-radius:12px;font-size:13px;line-height:1.7;color:#8A5A20;">
+      数据与照片存放在阿里云。同步异常时先看下面的状态，再点「连通自检」。当前状态：<b id="aboutCloudState">检查中…</b>
     </div>
-    <div class="modal-actions" style="margin-top:12px;justify-content:space-between;" data-page-node-id="YBB1e9wXEZSiygaEBWEbfN">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;" data-page-node-id="AhCLyIUej8ysjKxGLnS30p">
-        <button class="btn btn-primary" id="aboutCloudBtn" data-page-node-id="9BnMlaADBTdzuwNewBREFm">☁️ 接口与存储设置</button>
-        <button class="btn btn-soft" id="exportBtn" data-page-node-id="Z0jCr17MJK4XqF3JBQTSUC">导出数据</button>
-        <button class="btn btn-soft" id="importBtn" data-page-node-id="0GyDHV67JIfHkGH4oPiXc9">导入数据</button>
-        <button class="btn btn-soft" id="switchFamilyBtn" data-page-node-id="0KDQMO6V4iU5T6FCh8RyfZ">切换家庭码</button>
-        <input type="file" id="importFile" accept="application/json" style="display:none;" data-page-node-id="noq8EVGmRx2pCCGFUGQRex">
+    <div class="modal-actions" style="margin-top:12px;justify-content:space-between;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary" id="aboutCloudBtn">☁️ 接口与存储设置</button>
+        <button class="btn btn-soft" id="exportBtn">导出数据</button>
+        <button class="btn btn-soft" id="importBtn">导入数据</button>
+        <button class="btn btn-soft" id="switchFamilyBtn">切换家庭码</button>
+        <input type="file" id="importFile" accept="application/json" style="display:none;">
       </div>
-      <button class="btn btn-primary" onclick="closeModal('modalAbout')" data-page-node-id="rybDCvJPCACi01yWlLz8pK">好的</button>
+      <button class="btn btn-primary" onclick="closeModal('modalAbout')">好的</button>
     </div>
   </div>
 </div>
 
-<div class="modal-mask" id="modalFamily" data-page-node-id="8u0rvREx7306VvveHKCdAv">
-  <div class="modal-box" data-page-node-id="4vrvPSDUGihcuU4eSxI0qx">
-    <p class="modal-title" data-page-node-id="nPgsLnp6AMlSmv7BcDsyiY">👨‍👩‍👧 家庭共享码</p>
-    <div class="mini-hint" style="font-size:13px;line-height:1.8;" data-page-node-id="GpamkH09DrJD5IH3sOIFv8">
-      输入同一个「家庭码」，你和家人就能看到并编辑<b data-page-node-id="0NPSXLKTiSfYkrfWLADi8j">同一份</b>数据（冰箱、食谱、待办等），改动会自动实时同步。家庭码就是你们的共享钥匙，告诉家人即可一起用。
+<div class="modal-mask" id="modalFamily">
+  <div class="modal-box">
+    <p class="modal-title">👨‍👩‍👧 家庭共享码</p>
+    <div class="mini-hint" style="font-size:13px;line-height:1.8;">
+      输入同一个「家庭码」，你和家人就能看到并编辑<b>同一份</b>数据（冰箱、食谱、待办等），改动会自动实时同步。家庭码就是你们的共享钥匙，告诉家人即可一起用。
     </div>
-    <input id="familyCodeInput" placeholder="输入 6 位家庭码" style="margin-top:12px;width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:14px;" data-page-node-id="GvNu00EmioHiS7gDRbjEBK">
-    <div id="familyCodeHint" class="mini-hint" style="color:var(--danger);font-size:12px;margin-top:6px;" data-page-node-id="D0uYTPpvkzBFaqczXtXgig"></div>
-    <div class="modal-actions" style="justify-content:space-between;margin-top:14px;" data-page-node-id="9zUE8QzUXNWh9WekdBgUqY">
-      <button class="btn btn-soft" id="familyCreateBtn" data-page-node-id="21Rx928gEnvJoGPNvZYkM3">随机生成并进入</button>
-      <button class="btn btn-primary" id="familyEnterBtn" data-page-node-id="mpJ7vV8fiITRSWcYaF4xcj">进入</button>
+    <input id="familyCodeInput" placeholder="输入 6 位家庭码" style="margin-top:12px;width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:14px;">
+    <div id="familyCodeHint" class="mini-hint" style="color:var(--danger);font-size:12px;margin-top:6px;"></div>
+    <div id="familyTokenRow" style="display:none;margin-top:8px;">
+      <div class="mini-hint" style="font-size:12px;margin:0 0 4px;">这个后端设置了访问口令，请输入家人告诉你的口令（仅保存在本机）：</div>
+      <input id="familyTokenInput" type="password" placeholder="后端口令" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:14px;">
+    </div>
+    <div class="modal-actions" style="justify-content:space-between;margin-top:14px;">
+      <button class="btn btn-soft" id="familyCreateBtn">随机生成并进入</button>
+      <button class="btn btn-primary" id="familyEnterBtn">进入</button>
     </div>
   </div>
 </div>
 
+
+<!-- ===== 到此一游：添加 / 编辑 ===== -->
+<div class="modal-mask" id="modalPlace">
+  <div class="modal-box">
+    <p class="modal-title" id="plModalTitle">📍 加一站</p>
+    <div class="field-label">① 去了哪里</div>
+    <input class="field-input" id="plName" maxlength="30" placeholder="比如：京都 / 三亚 / 外婆家">
+    <div id="plGeoState"></div>
+    <div class="field-label">日期（选填）</div>
+    <input class="field-input" id="plDate" type="date">
+    <div class="field-label">谁去的（选填）</div>
+    <div class="pl-chips" id="plMembers"></div>
+    <div class="field-label">② 选合照</div>
+    <input id="plPhoto" type="file" accept="image/*" multiple style="display:none">
+    <div class="photo-thumbs" id="plPhotoThumbs"></div>
+    <div class="photo-count-hint" id="plPhotoHint"></div>
+    <div class="field-label">③ 一句话</div>
+    <input class="field-input" id="plNote" maxlength="60" placeholder="这一站最难忘的是…">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modalPlace')">取消</button>
+      <button class="btn btn-primary" id="plSaveBtn">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 到此一游：在地球上选位置 ===== -->
+<div class="modal-mask" id="modalPick">
+  <div class="modal-box">
+    <p class="modal-title">🌍 在地球上点一下</p>
+    <div class="mini-hint" style="margin:0;">拖动地球找到地方，点一下放下图钉</div>
+    <div class="pl-pick-wrap"><canvas id="plPickGlobe" class="pl-globe"></canvas></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="plPickCancel">取消</button>
+      <button class="btn btn-primary" id="plPickOk" disabled>就这里</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 到此一游：随便翻翻 ===== -->
+<div class="modal-mask" id="modalFlip">
+  <div class="modal-box pl-flip-box">
+    <p class="modal-title">🎲 随便翻翻</p>
+    <div class="pl-flip-card" id="plFlipCard"></div>
+    <div class="modal-actions" style="justify-content:space-between;">
+      <button class="btn btn-ghost" onclick="closeModal('modalFlip')">关闭</button>
+      <span style="display:flex;gap:8px;">
+        <button class="btn btn-soft" id="plFlipGo">🌍 去地球看看</button>
+        <button class="btn btn-primary" id="plFlipAgain">再翻一张</button>
+      </span>
+    </div>
+  </div>
+</div>
+
+<script src="globe-lib.js"></script>
 <script>
 (function(){
 "use strict";
@@ -625,7 +727,6 @@
    数据层：state 结构 + 读写 + 多标签页同步
    ========================================================= */
 var STORAGE_KEY = 'jjll_state_v1';
-var FRONTEND_BUILD = '2026-10-10.3';  // 前端版本号，显示在「关于 & 数据」与云端连通自检，用于确认设备跑的是否最新代码
 
 /* =========================================================
    多用户同步配置（Supabase）
@@ -636,12 +737,14 @@ var FRONTEND_BUILD = '2026-10-10.3';  // 前端版本号，显示在「关于 & 
 var SUPABASE_URL = 'https://lrjiiacbzpcfpstxakuu.supabase.co';   // Supabase 项目 URL
 var SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxyamlpYWNienBjZnBzdHhha3V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczNjE3MTAsImV4cCI6MjEwMjkzNzcxMH0.EkoYcU_L7nn7A44fj4Q86yVdPxwL4L1VWhinS53MkMA';   // anon public key
 var FAMILYCODE_KEY = 'jjll_family_code';
+/* 前端版本号（显示在「关于 & 数据」） */
+var FRONTEND_BUILD = 'web-20261010-oss-only';
+/* 阿里云后端默认地址，所有设备共用；可在「接口与存储设置」中覆盖 */
+var DEFAULT_API_BASE = 'https://jjll-api-wqdnqmrmck.cn-hangzhou.fcapp.run';
 
-/* ===== 国内后端：阿里云函数计算 + OSS =====
-   supabase.co 在国内大量网络下 TCP 被重置（实测 Connection reset），照片裂图、同步也断。
-   配置「国内云 API 地址」后，数据与照片全部走国内节点：FC 域名国内直连，FC 与 OSS 内网互通。 */
+/* ===== 后端：阿里云函数计算 FC + OSS（家庭数据与照片） ===== */
 function apiBase(){
-  var v = (typeof state !== 'undefined' && state && state.jjllApi) || '';
+  var v = (typeof state !== 'undefined' && state && state.jjllApi) || DEFAULT_API_BASE;
   return String(v || '').trim().replace(/\/+$/, '');
 }
 function apiToken(){
@@ -655,11 +758,7 @@ function ossHeaders(extra){
   if(t) h['x-jjll-token'] = t;
   return h;
 }
-/* 统一构造后端 URL。
-   实测阿里云 FC 某些触发器形态下后端拿不到真实路径（/state /ping /info 全部被当成根路径），
-   所以这里不直接拼 '/state'，而是统一走根地址 + __p 参数指定接口：
-   后端会优先读 __p，完全绕开路径识别问题。新版后端已支持，旧版后端也能兼容（它会当成根路径自检，
-   表现为返回里带 "oss" 字段，体检脚本能看出来）。 */
+/* 统一构造后端 URL：接口路径通过 __p 参数传递（兼容 FC 触发器拿不到真实路径的情况） */
 function ossUrl(route, params){
   var q = ['__p=' + encodeURIComponent(route)];
   if (params) {
@@ -672,15 +771,15 @@ function ossUrl(route, params){
   return apiBase() + '/?' + q.join('&');
 }
 
-var syncEnabled = true;   // Supabase 常量内置；国内后端地址在运行时配置，两者至少其一可用
+var syncEnabled = true;
+/* Supabase 仅保留「只读」用途：一次性把旧数据导入阿里云（见 legacyImportOnce），之后不再写入。 */
 function sbBase(){ return (SUPABASE_URL || '').replace(/\/+$/,'') + '/rest/v1/families'; }
-function sbHeaders(){ return { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON, 'Content-Type': 'application/json' }; }
+function sbHeaders(){ return { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON }; }
 var currentChannel = null;   // 复用作轮询定时器
 var lastSeenTs = 0;
 var justSynced = 0;
 var syncTimer = null;
-/* 云端同步成败可视化：以前写入失败被 catch 静默吞掉，用户改完数据看不出「到底同步没有」，
-   只会觉得"另一台设备没更新"。这里记下最近一次成功/失败，在「关于 & 数据」里直接显示。 */
+/* 记录最近一次同步成功/失败，显示在「关于 & 数据」 */
 var syncLastOk = 0;      // 上次成功写入云端的时间戳（0=从未成功）
 var syncFailMsg = '';    // 最近一次写入失败的原因（空=无失败）
 var lastBackendBuild = '';  // 后端 /info 回报的 BUILD_ID（判断线上是否已升到最新版）
@@ -696,93 +795,33 @@ function genFamilyCode(){
 function saveStateLocalOnly(){
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
 }
+var _saveRunning = false, _saveAgain = false, _needPush = false;
+function runSave(){
+  /* 上一次写入还没结束就又有改动：只记一笔，等它结束后用最新 state 再写一次，避免并发写互相冲突 */
+  if(_saveRunning){ _saveAgain = true; return; }
+  _saveRunning = true;
+  ossSyncSave().then(null, function(){}).then(function(){
+    _saveRunning = false;
+    if(_saveAgain){ _saveAgain = false; runSave(); }
+  });
+}
 function syncSave(){
   if(!syncEnabled) return;
   var code = getFamilyCode();
   if(!code) return;
   if(syncTimer) clearTimeout(syncTimer);
   syncTimer = setTimeout(function(){
-    justSynced = Date.now();   // 仅用于本机 2s 内跳过自身回声，使用本机时间即可
-    if(useOss()){ ossSyncSave(); return; }   // 国内后端（阿里云 FC + OSS）
-    var attempt = 0;
-    function tryOnce(){
-      attempt++;
-      try{
-        // currentUserId 和 apiConfig 是设备本地偏好，不参与云同步
-        var dataToSync = JSON.parse(JSON.stringify(state));
-        delete dataToSync.currentUserId;
-        delete dataToSync.apiConfig;
-        // 1) 读取云端当前数据与原始 updated_at（保留字符串，避免 ISO 毫秒精度丢失导致比较失败）
-        fetch(sbBase() + '?code=eq.' + encodeURIComponent(code) + '&select=data,updated_at&limit=1', { headers: sbHeaders(), cache:'no-store' })
-        .then(function(r){ return r.json(); })
-        .then(function(rows){
-          var base = (rows && rows[0] && rows[0].data) ? rows[0].data : null;
-          var baseTs = (rows && rows[0] && rows[0].updated_at) ? rows[0].updated_at : null;
-          // 2) 按 id 并集 + LWW 合并（本地优先并入云端其余条目），得到要写回的完整状态
-          var merged = mergeState(dataToSync, base);
-          // 3) 比较并交换（CAS）：带上一次读到的 updated_at 作为过滤条件，仅当云端未被别的设备改动才写入；
-          //    否则 PATCH 命中 0 行 → 说明发生并发写入 → 自动重读并重试（最多 4 次），彻底避免「互相覆盖/更新丢失」。
-          var url = sbBase() + '?code=eq.' + encodeURIComponent(code);
-          var headers = Object.assign({ 'Prefer':'return=representation' }, sbHeaders());
-          var method, body;
-          if(baseTs){
-            url += '&updated_at=eq.' + encodeURIComponent(baseTs);
-            method = 'PATCH';
-            body = JSON.stringify({ data: merged });
-          }else{
-            method = 'POST';
-            body = JSON.stringify({ code: code, data: merged, updated_at: new Date().toISOString() });
-          }
-          return fetch(url, { method:method, headers:headers, body:body })
-          .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, rows:j }; }); })
-          .then(function(res){
-            if(res.rows && res.rows.length){
-              // 用服务端时间戳更新 lastSeenTs：跨设备比较始终以服务端时间为准，修复时钟差造成的不同步
-              var ts = new Date(res.rows[0].updated_at).getTime();
-              if(ts) lastSeenTs = ts;
-            }else if(attempt < 4){
-              return tryOnce();   // 并发冲突或写入未生效 → 重试（重读+重合并）
-            }
-          });
-        })
-        .catch(function(){ if(attempt < 4) return tryOnce(); });
-      }catch(e){ if(attempt < 4) return tryOnce(); }
-    }
-    tryOnce();
+    justSynced = Date.now();   // 仅用于本机 2s 内跳过自身回声
+    runSave();
   }, 800);
 }
 function syncLoad(cb){
   if(!syncEnabled){ if(cb) cb(); return; }
   var code = getFamilyCode();
   if(!code){ if(cb) cb(); return; }
-  if(useOss()){ ossSyncLoad(cb); return; }
-  fetch(sbBase() + '?code=eq.' + encodeURIComponent(code) + '&select=data,updated_at&limit=1', { headers: sbHeaders(), cache: 'no-store' })
-    .then(function(r){ return r.json(); })
-    .then(function(rows){
-      if(Array.isArray(rows) && rows.length && rows[0] && rows[0].data){
-        // currentUserId 和 apiConfig 是设备本地偏好，从云端拉取时保留本地值
-        var localCurrentUserId = state.currentUserId;
-        var localApiConfig = state.apiConfig;
-        // 与本地合并（按 id 并集，本地优先），避免拉取时整行覆盖冲掉本地改动
-        state = mergeState(state, rows[0].data);
-        // 恢复本地偏好：当前选中成员
-        if(localCurrentUserId && state.users && state.users.some(function(u){return u.id===localCurrentUserId;})){
-          state.currentUserId = localCurrentUserId;
-        }
-        // 恢复本地偏好：API 配置（密钥/代理地址）
-        if(localApiConfig && localApiConfig.endpoint && localApiConfig.key){
-          state.apiConfig = localApiConfig;
-        }
-        normalizeState();
-        saveStateLocalOnly();
-        var ts = new Date(rows[0].updated_at).getTime();
-        if(ts) lastSeenTs = ts;
-      }
-      if(cb) cb();
-    })
-    .catch(function(){ if(cb) cb(); });
+  ossSyncLoad(cb);
 }
-/* 用定时轮询代替 WebSocket 实时订阅：仅依赖 REST，国内网络更可靠 */
+/* 用定时轮询代替 WebSocket：只依赖 HTTPS GET，国内网络最稳 */
 function subscribeRealtime(){
   if(!syncEnabled) return;
   var code = getFamilyCode();
@@ -790,20 +829,9 @@ function subscribeRealtime(){
   if(currentChannel){ clearInterval(currentChannel); currentChannel = null; }
   currentChannel = setInterval(function(){
     if(Date.now() - justSynced < 2000) return;   // 刚保存过，跳过自身回声
-    var c = getFamilyCode();
-    if(!c) return;
-    if(useOss()){ ossPoll(); return; }
-    fetch(sbBase() + '?code=eq.' + encodeURIComponent(c) + '&select=updated_at&limit=1', { headers: sbHeaders(), cache: 'no-store' })
-      .then(function(r){ return r.json(); })
-      .then(function(rows){
-        if(Array.isArray(rows) && rows.length && rows[0].updated_at){
-          var ts = new Date(rows[0].updated_at).getTime();
-          if(ts && ts > lastSeenTs){
-            syncLoad(function(){ renderAll(); });   // syncLoad 会刷新 lastSeenTs，避免重复拉取
-          }
-        }
-      }).catch(function(){});
-  }, 2000);   // 轮询间隔 2 秒，缩短跨设备同步延迟
+    if(!getFamilyCode()) return;
+    ossPoll();
+  }, 3000);
 }
 
 /* =========================================================
@@ -815,8 +843,7 @@ function ossStateUrl(code, extra){
   if (extra && extra.indexOf('only=') >= 0) params.only = 'ts';
   return ossUrl('/state', params);
 }
-/* fetch 带超时。移动端弱网 / 域名被拦时请求会长时间挂起，默认的 fetch 没有超时，
-   一直 pending 到浏览器放弃，最后只给一句 "Failed to fetch"，看不出是哪一层断了。 */
+/* 带超时的 fetch（弱网下避免请求一直挂起） */
 function fetchWithTimeout(url, opts, ms){
   opts = opts || {};
   if(typeof AbortController === 'undefined') return fetch(url, opts);
@@ -828,7 +855,13 @@ function fetchWithTimeout(url, opts, ms){
 }
 function ossGet(code){
   return fetchWithTimeout(ossStateUrl(code), { method:'GET', headers: ossHeaders(), cache: 'no-store' }, 15000)
-    .then(function(r){ return r.json(); });
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      /* 读取失败必须抛错，不能当作「云端为空」，否则会用本机数据覆盖云端 */
+      if(!res || res.ok === false) throw new Error((res && res.error) || '后端返回异常');
+      if(!('ts' in res)) throw new Error('后端返回格式不对（地址填错或后端不是新版）');
+      return res;
+    });
 }
 function ossPut(code, data, baseTs){
   return fetchWithTimeout(ossStateUrl(code), {
@@ -840,8 +873,8 @@ function ossPut(code, data, baseTs){
 function ossSyncSave(){
   var code = getFamilyCode();
   var attempt = 0;
-  function markOk(){ syncLastOk = Date.now(); syncFailMsg = ''; refreshAboutCloudState(); return true; }
-  function markFail(msg){ syncFailMsg = String(msg || '未知原因'); refreshAboutCloudState(); return false; }
+  function markOk(){ syncLastOk = Date.now(); syncFailMsg = ''; _needPush = false; safeRefreshAbout(); return true; }
+  function markFail(msg){ syncFailMsg = String(msg || '未知原因'); _needPush = true; safeRefreshAbout(); return false; }
   function tryOnce(){
     attempt++;
     try{
@@ -849,6 +882,7 @@ function ossSyncSave(){
       var dataToSync = JSON.parse(JSON.stringify(state));
       delete dataToSync.currentUserId;
       delete dataToSync.apiConfig;
+      delete dataToSync.jjllApi;     // 后端地址是设备本机设置，不参与云同步
       return ossGet(code).then(function(res){
         var base = (res && res.data) || null;
         var baseTs = (res && res.ts) || 0;
@@ -883,10 +917,14 @@ function ossSyncLoad(cb){
       if(localApiConfig) state.apiConfig = localApiConfig;    // 密钥等本机偏好不被云端覆盖
       normalizeState();
       saveStateLocalOnly();
-      if(res.ts) lastSeenTs = res.ts;
     }
+    if(res && res.ts) lastSeenTs = res.ts;
+    if(/^读取云端失败/.test(syncFailMsg)){ syncFailMsg = ''; safeRefreshAbout(); }
     if(cb) cb();
-  }).catch(function(){ if(cb) cb(); });
+  }).catch(function(e){
+    if(!syncFailMsg){ syncFailMsg = '读取云端失败：' + ((e && e.message) || e); safeRefreshAbout(); }
+    if(cb) cb();
+  });
 }
 function ossPoll(){
   var code = getFamilyCode();
@@ -895,12 +933,10 @@ function ossPoll(){
     .then(function(r){ return r.json(); })
     .then(function(res){
       if(res && res.ts && res.ts > lastSeenTs) ossSyncLoad(function(){ renderAll(); });
+      else if(_needPush) syncSave();     // 之前写入失败过，网络恢复后自动补推
     }).catch(function(){});
 }
-/* 照片上传：前端 → FC（国内直连）→ OSS 内网写入，返回 OSS 公开读地址（浏览器直连显示，不走 FC 转流量）
-   带重试与超时：手机 4G/弱网下上传一张图常需 10~20 秒，默认 fetch 无超时、
-   网络抖动时直接抛 "Failed to fetch"，用户只看到"连接失败"。
-   这里明确区分「网络层失败」与「后端返回错误」，并对网络失败自动重试 2 次（指数退避）。 */
+/* 照片上传：前端 → FC → OSS，返回 OSS 公开读地址；带超时和重试 */
 function ossUploadPhotoOnce(dataUrl, timeoutMs){
   var name = 'photos/' + photoName();
   var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
@@ -929,8 +965,7 @@ function ossUploadPhotoOnce(dataUrl, timeoutMs){
     }).catch(function(e){
       if(timer) clearTimeout(timer);
       if(ctrl && e && e.name === 'AbortError') throw new Error('上传超时（' + Math.round((timeoutMs||45000)/1000) + '秒无响应），网络可能太慢');
-      /* fetch 抛出的 TypeError: Failed to fetch 是网络层失败（连不上/中途断开/CORS），
-         这类值得重试；后端已明确返回的业务错误则不重试。 */
+      /* 仅网络层失败（连不上/中途断开）才重试，后端返回的业务错误直接抛出 */
       var msg = (e && e.message) || String(e);
       if(/Failed to fetch|NetworkError|load failed/i.test(msg)){
         var err = new Error('连不上后端（网络请求失败）：' + msg);
@@ -959,30 +994,105 @@ function ossLoadInfo(){
     .then(function(r){ return r.json(); })
     .then(function(j){
       if(j && j.publicBase) OSS_PUBLIC_BASE = String(j.publicBase).replace(/\/+$/, '');
+      if(j && j.buildId) lastBackendBuild = String(j.buildId);
       return OSS_PUBLIC_BASE;
     }).catch(function(){ return ''; });
 }
 function isOssRef(u){ return !!OSS_PUBLIC_BASE && isHttpUrl(u) && String(u).indexOf(OSS_PUBLIC_BASE) === 0; }
 
+/* 一次性迁移：只读拉取 Supabase 旧数据并入本机，随后写入阿里云（每台设备每个家庭码一次） */
+function legacyImportOnce(cb){
+  var code = getFamilyCode();
+  var flag = 'jjll_sb_imported_' + code;
+  try{ if(localStorage.getItem(flag) === '1'){ if(cb) cb(); return; } }catch(e){}
+  fetchWithTimeout(sbBase() + '?code=eq.' + encodeURIComponent(code) + '&select=data&limit=1',
+                   { headers: sbHeaders(), cache: 'no-store' }, 10000)
+    .then(function(r){ return r.json(); })
+    .then(function(rows){
+      if(!Array.isArray(rows)) return;               // 报错对象：不算成功，不打标记
+      var d = rows[0] && rows[0].data;
+      if(d){
+        var keepUser = state.currentUserId, keepApi = state.apiConfig, keepJjll = state.jjllApi;
+        state = mergeState(state, d);
+        if(keepUser && state.users && state.users.some(function(u){ return u.id === keepUser; })) state.currentUserId = keepUser;
+        if(keepApi) state.apiConfig = keepApi;
+        state.jjllApi = keepJjll || '';
+        normalizeState();
+        saveState();                                 // 保存 → 合并后写入阿里云
+      }
+      try{ localStorage.setItem(flag, '1'); }catch(e){}
+    })
+    .catch(function(){})
+    .then(function(){ if(cb) cb(); });
+}
+/* 启动 / 进入家庭后的统一流程 */
+function startSync(){
+  syncLoad(function(){
+    renderAll();
+    subscribeRealtime();
+    if(!syncFailMsg) syncSave();                     // 本机独有的条目也推上去（首次迁移、离线期间的改动）
+    legacyImportOnce(function(){ renderAll(); });
+    setTimeout(function(){ uploadPendingIdbPhotos(); }, 3000);
+    setTimeout(function(){                           // 静默迁移 Supabase 旧照片到 OSS（拿不到原图的不动）
+      ossLoadInfo().then(function(base){ if(base) doMigratePhotos(null, true); });
+    }, 9000);
+  });
+}
 function enterFamily(code){
   setFamilyCode(code);
   closeModal('modalFamily');
-  syncLoad(function(){ renderAll(); subscribeRealtime(); });
+  startSync();
+}
+/* 与后端 safeCode 保持一致：只保留小写字母/数字/下划线/短横线，最长 32 位 */
+function normalizeFamilyCode(v){ return String(v || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32); }
+/* 进入前先向云端验证：码不存在时让用户确认，缺口令时提示输入 */
+function verifyAndEnter(code, isNew){
+  var hint = document.getElementById('familyCodeHint');
+  var enterBtn = document.getElementById('familyEnterBtn'), createBtn = document.getElementById('familyCreateBtn');
+  var tokRow = document.getElementById('familyTokenRow'), tokInput = document.getElementById('familyTokenInput');
+  function say(msg, ok){ hint.style.color = ok ? 'var(--text-light)' : 'var(--danger)'; hint.textContent = msg; }
+  function busy(b){ enterBtn.disabled = createBtn.disabled = b; }
+  if(tokRow.style.display !== 'none' && tokInput.value.trim()){
+    state.apiConfig.jjllToken = tokInput.value.trim();
+    saveStateLocalOnly();
+  }
+  busy(true); say('正在连接云端…', true);
+  ossGet(code).then(function(res){
+    if(!res.data && !isNew){
+      if(!confirm('云端没有找到家庭码「' + code + '」的数据。\n\n· 想加入已有的家庭：多半是码输错了，请点「取消」重新核对；\n· 想用这个码新建一个家庭：请点「确定」。')){
+        say('已取消，请核对家庭码后再试', false); return;
+      }
+    }
+    enterFamily(code);
+  }).catch(function(e){
+    var msg = String((e && e.message) || e);
+    if(/token|口令|401/i.test(msg)){
+      tokRow.style.display = '';
+      say(tokInput.value.trim() ? '口令不对，请重新输入' : '需要后端口令才能进入，请在下方输入', false);
+      tokInput.focus();
+    }else{
+      say('连不上云端：' + msg + '。请检查网络后重试', false);
+    }
+  }).then(function(){ busy(false); });
 }
 function openFamilyModal(){
   var hint = document.getElementById('familyCodeHint');
   var input = document.getElementById('familyCodeInput');
-  if(hint) hint.textContent = '';
+  if(hint){ hint.textContent = ''; hint.style.color = 'var(--danger)'; }
   if(input) input.value = '';
+  var tokRow = document.getElementById('familyTokenRow');
+  if(tokRow) tokRow.style.display = 'none';
   openModal('modalFamily');
   setTimeout(function(){ if(input) input.focus(); }, 60);
   document.getElementById('familyEnterBtn').onclick = function(){
-    var v = (input.value || '').trim().toLowerCase();
-    if(!v){ if(hint) hint.textContent = '请输入家庭码'; return; }
-    enterFamily(v);
+    var raw = (input.value || '').trim();
+    if(!raw){ hint.textContent = '请输入家庭码'; return; }
+    var v = normalizeFamilyCode(raw);
+    if(!v){ hint.textContent = '家庭码只能包含字母和数字'; return; }
+    verifyAndEnter(v, false);
   };
   document.getElementById('familyCreateBtn').onclick = function(){
-    enterFamily(genFamilyCode());
+    verifyAndEnter(genFamilyCode(), true);
   };
 }
 var COLORS = ['#FF8FA3','#7FB77E','#FFC93C','#8AB6D6','#C9A0DC','#F49AC2'];
@@ -999,15 +1109,19 @@ function defaultState(){
       ]},
       {id:'m_zhu', name:'住住住住', icon:'🏠', enabled:true, order:1, children:[
         {id:'m_todo', name:'待办事项', icon:'✅', enabled:true, order:0, type:'todo'}
+      ]},
+      {id:'m_wan', name:'玩玩玩玩', icon:'🎡', enabled:true, order:2, children:[
+        {id:'m_places', name:'到此一游', icon:'🗺️', enabled:true, order:0, type:'places'}
       ]}
     ],
     fridge:{ chilled:[], frozen:[] },
     recipeRecords:[],
+    places:[],
     recipeIdeas:'',
     apiConfig:{endpoint:'', key:'', model:'gpt-3.5-turbo', proxyUrl:'', photoProxy:''},
     todos:[],
     customNotes:{},
-    _del:{chilled:{},frozen:{},todos:{},recipeRecords:{},users:{}}
+    _del:{chilled:{},frozen:{},todos:{},recipeRecords:{},users:{},places:{}}
   };
 }
 
@@ -1033,6 +1147,7 @@ function normalizeState(){
   if(!state.currentUserId && state.users.length){ state.currentUserId = state.users[0].id; }
   if(!state.fridge) state.fridge = {chilled:[],frozen:[]};
   if(!state.recipeRecords) state.recipeRecords = [];
+  if(!Array.isArray(state.places)) state.places = [];
   if(typeof state.recipeIdeas !== 'string') state.recipeIdeas = '';
   if(!state.apiConfig) state.apiConfig = {endpoint:'',key:'',model:'gpt-3.5-turbo',proxyUrl:'',photoProxy:''};
   else{
@@ -1047,40 +1162,38 @@ function normalizeState(){
   if(state.apiConfig && typeof state.apiConfig.jjllToken !== 'string') state.apiConfig.jjllToken = '';
   /* 同步用墓碑：记录已删除条目的 id，便于跨设备传播「删除」 */
   if(!state._del) state._del = {};
-  ['chilled','frozen','recipeRecords','todos','users'].forEach(function(t){ if(!state._del[t]) state._del[t]={}; });
+  ['chilled','frozen','recipeRecords','todos','users','places'].forEach(function(t){ if(!state._del[t]) state._del[t]={}; });
   /* 兼容旧数据：照片统一为 photos 数组；待办补齐 done 字段 */
   state.recipeRecords.forEach(function(r){
     if(!Array.isArray(r.photos)){ r.photos = r.photo ? [r.photo] : []; }
   });
   state.todos.forEach(function(t){ if(typeof t.done !== 'boolean') t.done = false; });
-  /* 旧数据补齐 updatedAt：用于跨设备「最后写入获胜(LWW)」合并，避免本地旧副本覆盖云端新改动导致回退。
-     新条目在创建/编辑时写入真实时间戳；此处仅给历史条目一个固定旧值(1)，使任何真实编辑都优先。 */
+  /* 给旧数据补 updatedAt，用于跨设备按「最后写入者胜」合并 */
   [['chilled'],['frozen']].forEach(function(p){
     (state.fridge[p[0]]||[]).forEach(function(it){ if(it && it.id && !it.updatedAt) it.updatedAt = 1; });
   });
   state.todos.forEach(function(it){ if(it && it.id && !it.updatedAt) it.updatedAt = 1; });
   state.recipeRecords.forEach(function(it){ if(it && it.id && !it.updatedAt) it.updatedAt = 1; });
+  state.places.forEach(function(it){ if(it && it.id && !it.updatedAt) it.updatedAt = 1; });
   state.users.forEach(function(it){ if(it && it.id && !it.updatedAt) it.updatedAt = 1; });
   state.modules.forEach(function(it){ if(it && it.id && !it.updatedAt) it.updatedAt = 1; });
+  /* 老用户补上「玩玩玩玩」模块（每台设备只补一次） */
+  var hasWan = state.modules.some(function(m){ return m.id === 'm_wan'; });
+  var seeded = false; try{ seeded = localStorage.getItem('jjll_seed_wan') === '1'; }catch(e){}
+  if(!hasWan && !seeded){
+    var maxOrder = state.modules.reduce(function(a, m){ return Math.max(a, m.order || 0); }, -1);
+    state.modules.push({id:'m_wan', name:'玩玩玩玩', icon:'🎡', enabled:true, order:maxOrder + 1, updatedAt:1,
+      children:[{id:'m_places', name:'到此一游', icon:'🗺️', enabled:true, order:0, type:'places', updatedAt:1}]});
+  }
+  try{ localStorage.setItem('jjll_seed_wan', '1'); }catch(e){}
 }
 
 /* =========================================================
    跨设备合并：按条目 id 并集（本地优先），删除用墓碑(_del)传播
    解决「整行覆盖导致彼此改动被冲掉、更新几秒后跳回原数据」
    ========================================================= */
-function unionById(localArr, remoteArr, delMap, lww){
-  if(lww === false){
-    // 兼容旧逻辑：本地优先（目前未使用，保留以防回退）
-    var m0 = {};
-    (localArr||[]).forEach(function(it){ if(it && it.id) m0[it.id] = it; });
-    (remoteArr||[]).forEach(function(it){ if(it && it.id && !m0[it.id]) m0[it.id] = it; });
-    if(delMap){ Object.keys(delMap).forEach(function(id){ if(m0[id]) delete m0[id]; }); }
-    var r0 = [];
-    (localArr||[]).forEach(function(it){ if(it && it.id && m0[it.id]){ r0.push(m0[it.id]); delete m0[it.id]; } });
-    Object.keys(m0).forEach(function(k){ r0.push(m0[k]); });
-    return r0;
-  }
-  // 默认 LWW（Last-Write-Wins）：按 updatedAt 取较新版本，解决「本地旧副本覆盖云端新改动 → 数据回退」
+function unionById(localArr, remoteArr, delMap){
+  // 按 updatedAt 取较新版本（最后写入者胜）
   var map = {};
   function pick(existing, incoming){
     if(!existing) return incoming;
@@ -1116,19 +1229,25 @@ function mergeState(local, remote){
   out.modules = out.modules || [];
   out._del = out._del || {};
   out.customNotes = out.customNotes || {};
-  ['chilled','frozen','recipeRecords','todos','users'].forEach(function(t){ if(!out._del[t]) out._del[t]={}; });
+  ['chilled','frozen','recipeRecords','todos','users','places'].forEach(function(t){ if(!out._del[t]) out._del[t]={}; });
   var rdel = remote._del || {};
-  ['chilled','frozen','recipeRecords','todos','users'].forEach(function(t){ rdel[t]=rdel[t]||{}; });
+  ['chilled','frozen','recipeRecords','todos','users','places'].forEach(function(t){ rdel[t]=rdel[t]||{}; });
   var mdel = {};
-  ['chilled','frozen','recipeRecords','todos','users'].forEach(function(t){ mdel[t] = Object.assign({}, out._del[t]||{}, rdel[t]||{}); });
+  ['chilled','frozen','recipeRecords','todos','users','places'].forEach(function(t){ mdel[t] = Object.assign({}, out._del[t]||{}, rdel[t]||{}); });
   out.fridge.chilled = unionById(out.fridge.chilled, remote.fridge && remote.fridge.chilled, mdel.chilled, true);
   out.fridge.frozen  = unionById(out.fridge.frozen,  remote.fridge && remote.fridge.frozen,  mdel.frozen, true);
   out.todos          = unionById(out.todos,          remote.todos,          mdel.todos, true);
   out.recipeRecords  = unionById(out.recipeRecords,  remote.recipeRecords,  mdel.recipeRecords, true);
+  out.places         = unionById(out.places || [], remote.places, mdel.places, true);
   out.users          = unionById(out.users,          remote.users,          mdel.users, true);
   out.modules        = unionById(out.modules,        remote.modules,        null, true);   // 模块按 LWW 合并新增/改名，不传播删除
   if(remote.recipeIdeas && !out.recipeIdeas) out.recipeIdeas = remote.recipeIdeas;
   out.customNotes = Object.assign({}, remote.customNotes||{}, out.customNotes||{});
+  /* 缩略图：远端在先、本机在后（同一张以本机为准），超上限丢最老的 */
+  out.photoThumbs = Object.assign({}, remote.photoThumbs||{}, out.photoThumbs||{});
+  var _tk = Object.keys(out.photoThumbs);
+  if(_tk.length > THUMB_LIMIT){ for(var _i=0; _i<_tk.length-THUMB_LIMIT; _i++) delete out.photoThumbs[_tk[_i]]; }
+  if(!out.photoProxy && remote.photoProxy) out.photoProxy = remote.photoProxy;
   out._del = mdel;
   return out;
 }
@@ -1141,11 +1260,9 @@ function mergeState(local, remote){
    这样 localStorage 与云端同步的数据都只剩引用，不再被照片撑爆。
 =================================== */
 var PHOTO_BUCKET = 'photos';
-/* 可选：把图片代理地址直接写死在这里（如 'https://jijilili-photo.xxx.workers.dev'），
-   这样所有设备都生效，不必逐台去设置里填。留空则只认「设置 → 图片代理地址」。 */
+/* 可选：图片代理地址（如 https://xxx.workers.dev） */
 var PHOTO_PROXY_DEFAULT = '';
 var photoCache = Object.create(null);   // 引用 -> 可直接显示的 src
-var _sbPhotoOk = null;                  // null=未知 true=Storage可用 false=已降级
 
 function isDataUrl(s){ return typeof s === 'string' && s.indexOf('data:image/') === 0; }
 function isHttpUrl(s){ return typeof s === 'string' && /^https?:\/\//i.test(s); }
@@ -1202,7 +1319,7 @@ function idbGetMany(keys){
   }).catch(function(){ return {}; });
 }
 
-/* ---- Supabase Storage ---- */
+/* ---- 照片工具 ---- */
 function dataUrlToBlob(dataUrl){
   var parts = String(dataUrl).split(',');
   var mime = (parts[0].match(/:(.*?);/) || [])[1] || 'image/jpeg';
@@ -1215,51 +1332,12 @@ function photoName(){
   var code = (getFamilyCode() || 'public').replace(/[^a-zA-Z0-9_-]/g,'') || 'public';
   return code + '/' + Date.now().toString(36) + Math.random().toString(36).slice(2,8) + '.jpg';
 }
-function sbUploadPhoto(dataUrl){
-  if(!syncEnabled) return Promise.reject(new Error('no-sync'));
-  var name = photoName();
-  var base = (SUPABASE_URL || '').replace(/\/+$/,'');
-  function publicUrl(){ return base + '/storage/v1/object/public/' + PHOTO_BUCKET + '/' + name; }
-  // 1) 直连 Supabase Storage
-  return fetch(base + '/storage/v1/object/' + PHOTO_BUCKET + '/' + name, {
-    method: 'POST',
-    headers: {
-      'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON,
-      'Content-Type': 'image/jpeg', 'x-upsert': 'true'
-    },
-    body: dataUrlToBlob(dataUrl)
-  }).then(function(r){
-    if(!r.ok) throw new Error('upload-failed');
-    return publicUrl();
-  }).catch(function(){
-    // 2) 直连不通（换网络后常见）→ 改走图片代理上传（代理端携带 anon key 回源）
-    var ps = proxyList();
-    if(!ps.length) throw new Error('upload-failed');
-    return fetch(ps[0] + '/' + PHOTO_BUCKET + '/' + name, {
-      method: 'POST',
-      headers: { 'Content-Type': 'image/jpeg', 'x-upsert': 'true' },
-      body: dataUrlToBlob(dataUrl)
-    }).then(function(r){
-      if(!r.ok) throw new Error('proxy-upload-failed');
-      return publicUrl();
-    });
-  });
-}
-
-/* ---- 缩略图：跟着数据一起同步 ----
-   原图放在 Supabase Storage，而 supabase.co 在部分网络（尤其手机流量/公司网）连不上，
-   于是别的设备只能看到裂图。解决办法：每张照片额外生成一张约 10KB 的小缩略图，
-   随 state 一起同步。只要设备能同步到数据，就一定能先看到缩略图；网络好时再换成高清原图。 */
-/* 缩略图体积上限（决定会不会撑爆 localStorage）：
-   手机端 localStorage 通常只有 5MB，而 base64 比原体积大 33%。
-   150 张 × 10KB ≈ 1.5MB 看似安全，但家庭数据本身也要占空间，
-   手机上还可能有其他站点数据共用配额，所以这里主动压低并让 THUMB_LIMIT 可动态收缩。 */
+/* ---- 缩略图：随数据同步 ---- */
+/* 缩略图数量上限（localStorage 约 5MB，需给家庭数据留空间） */
 var THUMB_MAX = 200;        // 缩略图最长边
 var THUMB_QUALITY = 0.45;
 var THUMB_LIMIT = 150;      // 最多保留多少张缩略图（防止本地存储膨胀）
-/* 缩略图总体积上限（base64 字符数）。150 张按 10KB 算约 1.5MB，
-   但手机端 localStorage 只有 5MB，还要留给家庭数据本身，所以再卡一道总量闸：
-   超过 THUMB_BYTES 就丢最老的缩略图。实测这是手机端「保存失败」的主因。 */
+/* 缩略图总体积上限（base64 字符数） */
 var THUMB_BYTES = 700 * 1024;
 function thumbBytes(){
   if(!state || !state.photoThumbs) return 0;
@@ -1325,21 +1403,49 @@ function storePhoto(p){
     if(!ref || !isHttpUrl(ref) && !isIdbRef(ref)) return ref;
     return makeThumb(p).then(function(t){ if(t) noteThumb(ref, t); return ref; });
   }
-  if(useOss()){                       // 国内后端：FC → OSS 内网写入
-    return ossUploadPhoto(p).then(function(url){
-      cachePhotoLocally(url, p);
-      return withThumb(url);
-    }).catch(function(){ return toIdb().then(withThumb); });
-  }
-  if(_sbPhotoOk === false) return toIdb().then(withThumb);
-  return sbUploadPhoto(p).then(function(url){
-    _sbPhotoOk = true;
-    cachePhotoLocally(url, p);   // 同时在本机留一份副本，换网络/断网也能显示
+  /* 新照片只走阿里云；上传失败时先存本机 IndexedDB，稍后自动补传 */
+  return ossUploadPhoto(p).then(function(url){
+    cachePhotoLocally(url, p);
     return withThumb(url);
   }).catch(function(){
-    _sbPhotoOk = false;
+    setTimeout(function(){ uploadPendingIdbPhotos(); }, 15000);
     return toIdb().then(withThumb);
   });
+}
+var _pendingRun = false;
+function uploadPendingIdbPhotos(){
+  if(_pendingRun || !useOss() || !state) return Promise.resolve(false);
+  var refs = [];
+  photoHolders().forEach(function(r){
+    (r.photos || []).forEach(function(x){ if(isIdbRef(x) && refs.indexOf(x) < 0) refs.push(x); });
+  });
+  if(!refs.length) return Promise.resolve(false);
+  _pendingRun = true;
+  var changed = false, i = 0;
+  function next(){
+    if(i >= refs.length) return Promise.resolve();
+    var ref = refs[i++];
+    return idbGet(ref.slice(4)).then(function(d){
+      if(!d || !isDataUrl(d)) return;            // 这张图的原件不在本机（是别的设备上传失败留下的），只能在原设备补传
+      return ossUploadPhoto(d).then(function(url){
+        var th = thumbOf(ref);
+        photoHolders().forEach(function(r){
+          var hit = false;
+          (r.photos || []).forEach(function(x, k){ if(x === ref){ r.photos[k] = url; hit = true; } });
+          if(r.photo === ref){ r.photo = url; hit = true; }
+          if(hit) r.updatedAt = Date.now();
+        });
+        if(th) noteThumb(url, th);
+        cachePhotoLocally(url, d);
+        changed = true;
+      });
+    }).then(next, next);
+  }
+  return next().then(function(){
+    _pendingRun = false;
+    if(changed){ saveState(); renderAll(); }
+    return changed;
+  }, function(){ _pendingRun = false; return false; });
 }
 function storePhotos(list){ return Promise.all((list || []).map(storePhoto)); }
 
@@ -1353,16 +1459,19 @@ function resolvePhoto(ref){
   }
   return Promise.resolve(ref);
 }
-/* ---- 图片加载：代理优先 → 直连兜底 → 本机副本 ----
-   部分网络连不上 supabase.co，导致照片只有上传时那个 WiFi 能看。
-   这里三级降级：先走 Cloudflare 代理，再直连，最后用上传时存在本机 IndexedDB 的副本。 */
-var PHOTO_TIMEOUT = 6000;                 // 单个通道等待上限：连不上的域名常常既不成功也不报错，只能靠超时切换
+/* ---- 图片加载：缩略图先行 → 代理 → 直连 → 本机副本 ---- */
+var PHOTO_TIMEOUT = 12000;                 // 单个通道等待上限（毫秒）
 var PHOTO_CHAN_KEY = 'jjll_photo_chan';   // 记住上次成功的通道，避免每张图都干等超时
 var PHOTO_BROKEN = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120">' +
   '<rect width="160" height="120" fill="#F3ECE6"/>' +
   '<text x="80" y="62" font-size="15" fill="#9C8879" text-anchor="middle" font-family="sans-serif">图片暂不可用</text>' +
   '<text x="80" y="84" font-size="12" fill="#BCAEA2" text-anchor="middle" font-family="sans-serif">点击重试</text></svg>');
+var PHOTO_PENDING = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120">' +
+  '<rect width="160" height="120" fill="#F3ECE6"/>' +
+  '<text x="80" y="54" font-size="14" fill="#9C8879" text-anchor="middle" font-family="sans-serif">照片在原设备上</text>' +
+  '<text x="80" y="76" font-size="12" fill="#BCAEA2" text-anchor="middle" font-family="sans-serif">原设备联网后自动补传</text></svg>');
 var PHOTO_BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';  // 1x1 透明图：加载中占位，避免出现裂图图标
 function photoChan(){ try{ return localStorage.getItem(PHOTO_CHAN_KEY) || ''; }catch(e){ return ''; } }
 function rememberChan(c){ try{ localStorage.setItem(PHOTO_CHAN_KEY, c); }catch(e){} }
@@ -1388,11 +1497,7 @@ function viaProxy(url){
   if(!m) return url;
   return ps[0] + '/' + m[1];
 }
-/* 图片中转候选：把「浏览器能显示、但应用取不到字节」的 Supabase 图，
-   经 CORS 友好的中转取回。两个来源：
-     ① 本项目已在用的 OSS 后端 jjll-api 的 /img 端点（useOss 时自动启用，无需额外部署）
-     ② 用户在「图片代理地址」里填的代理（推荐 Cloudflare Worker，国内回源 Supabase 最稳）
-   注意：中转解决的是「取字节」问题——直连 <img> 能显示不代表 fetch 能拿到字节。 */
+/* 图片中转候选：经 CORS 友好的中转取回无法直连的旧图 */
 function imgRelays(ref){
   var out = [];
   if(useOss()){
@@ -1404,8 +1509,7 @@ function imgRelays(ref){
   }
   return out;
 }
-/* 候选通道列表：直连优先（网络可达时最快），中转兜底（解决「能显示却取不到字节」）。
-   上次哪个成功就把它排前面，避免每张图都干等超时。 */
+/* 候选通道：上次成功的排前面，避免每张图都等超时 */
 function buildCandidates(ref){
   if(!isHttpUrl(ref)) return [];
   var m = String(ref).match(/\/storage\/v1\/object\/public\/(.+)$/);
@@ -1441,8 +1545,7 @@ function getLocalCopy(url){
     });
   }).catch(function(){ return ''; });
 }
-/* 图片成功显示后，顺手在本机留一份副本（走浏览器缓存，几乎不额外耗流量）。
-   这样即使是上传时代久远、没存过副本的旧照片，之后换到连不上 supabase 的网络也能显示。 */
+/* 图片显示成功后在本机留一份副本，断网/换网络时兜底 */
 var _localCopyTried = Object.create(null);
 function ensureLocalCopy(url){
   if(!isHttpUrl(url) || _localCopyTried[url]) return;
@@ -1466,10 +1569,7 @@ function ensureLocalCopy(url){
     .catch(function(){});
 }
 
-/* 给一张图片绑定加载逻辑：
-   先立刻显示随数据同步过来的缩略图（任何网络都看得到，不会裂图），
-   再在后台依次尝试「图片代理 → 直连」（带超时，连不上的域名不会无限转圈），
-   都不通就用本机 IndexedDB 副本，最后才给一个可点击重试的占位图。 */
+/* 绑定图片加载：先显示缩略图，再后台依次尝试代理 → 直连 */
 function bindPhotoFallback(img, ref){
   // 同一元素可能被重复调用（灯箱左右切换），先中止上一次的加载链
   if(img._photoAbort){ try{ img._photoAbort(); }catch(e){} img._photoAbort = null; }
@@ -1479,7 +1579,10 @@ function bindPhotoFallback(img, ref){
 
   if(isDataUrl(ref)){ if(img.src !== ref) img.src = ref; return; }
   if(!isHttpUrl(ref)){                       // idb: 引用 → 取本机大图
-    resolvePhoto(ref).then(function(s){ if(s) img.src = s; });
+    resolvePhoto(ref).then(function(s){
+      if(s) img.src = s;
+      else if(!thumb) img.src = PHOTO_PENDING;   // idb 原件只在上传它的那台设备上，其它设备等对方补传到阿里云
+    });
     return;
   }
 
@@ -1550,9 +1653,10 @@ function hydratePhotos(root){
 
 /* ---- 旧数据迁移：把 localStorage 里已有的 base64 照片搬到 IndexedDB/Storage ---- */
 function migratePhotosOutOfStorage(){
-  if(!state.recipeRecords || !state.recipeRecords.length) return Promise.resolve(false);
+  var holders = photoHolders();
+  if(!holders.length) return Promise.resolve(false);
   var jobs = [];
-  state.recipeRecords.forEach(function(r){
+  holders.forEach(function(r){
     var ps = recordPhotos(r);
     if(!ps.length) return;
     var need = ps.some(function(p){ return isDataUrl(p) && p.length > 2000; });
@@ -1568,10 +1672,7 @@ function migratePhotosOutOfStorage(){
 }
 
 var suppressBroadcast = false;
-/* localStorage 写满时不要只弹窗——那是死路，用户除了「清理照片」没别的办法，
-   而清照片会丢数据。这里改成「自动瘦身重试」：
-   依次丢掉 photoThumbs 里最老的一半（缩略图是可以重建的，丢了只是暂时看不清图，
-   联网后点「补建缩略图」即可恢复），再试写入；仍失败才提示用户。 */
+/* localStorage 写满时自动瘦身重试：先丢弃缩略图再重试，而不是直接报错 */
 var _saveFailNotified = false;
 function writeStateRetry(attempt){
   var txt;
@@ -1761,6 +1862,7 @@ function renderContent(){
   if(l2.type==='fridge') renderFridgeView(box);
   else if(l2.type==='recipe') renderRecipeView(box, l2);
   else if(l2.type==='todo') renderTodoView(box);
+  else if(l2.type==='places') renderPlacesView(box);
   else renderCustomView(box, l2);
 }
 
@@ -1976,7 +2078,6 @@ function renderCalendar(){
   for(var i=startDow-1;i>=0;i--){ cells.push({d:daysInPrev-i, other:true, ym:prevYM(y,m)}); }
   for(var d=1; d<=daysInMonth; d++){ cells.push({d:d, other:false, ym:{y:y,m:m}}); }
   while(cells.length % 7 !== 0){ var nd=cells.length-(startDow+daysInMonth); cells.push({d:nd+ (cells.length-startDow-daysInMonth), other:true, ym:nextYM(y,m)}); }
-  // recompute trailing properly
   var wk = ['日','一','二','三','四','五','六'];
   var html = wk.map(function(w){return '<div class="cal-wk">'+w+'</div>';}).join('');
   var todaySt = todayStr();
@@ -2003,6 +2104,7 @@ function renderCalendar(){
 function prevYM(y,m){ return m===0? {y:y-1,m:11} : {y:y,m:m-1}; }
 function nextYM(y,m){ return m===11? {y:y+1,m:0} : {y:y,m:m+1}; }
 
+function photoHolders(){ return (state.recipeRecords || []).concat(state.places || []); }
 function recordPhotos(r){
   if(Array.isArray(r.photos) && r.photos.length) return r.photos;
   return r.photo ? [r.photo] : [];
@@ -2056,7 +2158,7 @@ function openLightbox(list, idx, rec){
   if(!list || !list.length) return;
   lbState.list = list;
   lbState.idx = Math.max(0, Math.min(list.length-1, idx||0));
-  lbState.meta = rec ? (rec.date+'　'+rec.type+(rec.note?('　·　'+rec.note):'')) : '';
+  lbState.meta = typeof rec === 'string' ? rec : (rec ? (rec.date+'　'+rec.type+(rec.note?('　·　'+rec.note):'')) : '');
   renderLightbox();
   document.getElementById('modalLightbox').classList.add('show');
 }
@@ -2217,7 +2319,7 @@ function openApiModal(){
   document.getElementById('apiModel').value = state.apiConfig.model||'gpt-3.5-turbo';
   document.getElementById('apiProxy').value = state.apiConfig.proxyUrl||'';
   var jaEl = document.getElementById('jjllApi');
-  if(jaEl) jaEl.value = state.jjllApi || '';
+  if(jaEl){ jaEl.value = state.jjllApi || ''; jaEl.placeholder = DEFAULT_API_BASE; }
   var jtEl = document.getElementById('jjllToken');
   if(jtEl) jtEl.value = (state.apiConfig && state.apiConfig.jjllToken) || '';
   var ppEl = document.getElementById('photoProxy');
@@ -2239,15 +2341,14 @@ document.getElementById('apiSaveBtn').addEventListener('click', function(){
   state.apiConfig.jjllToken = jtEl ? String(jtEl.value || '').trim() : '';
   ossLoadInfo();                                   // 拉取 OSS 公开读域名，用于判断照片是否已迁移
   saveState(); closeModal('modalApi');
-  renderCloudTip();                                // 配置完立刻收掉顶部引导条
-  refreshAboutCloudState();
+  safeRefreshAbout();
 });
 
 /* ---- 图片自检：逐个通道试加载一张真实照片，直接告诉你哪个通 ---- */
 function photoSelfTest(){
   var out = document.getElementById('photoTestOut');
   var ref = '';
-  (state.recipeRecords || []).forEach(function(r){
+  photoHolders().forEach(function(r){
     (r.photos || []).forEach(function(p){ if(!ref && isHttpUrl(p)) ref = p; });
   });
   if(!ref){
@@ -2281,13 +2382,7 @@ function photoSelfTest(){
 }
 document.getElementById('photoTestBtn').addEventListener('click', photoSelfTest);
 
-/* ---- 云端连通自检 ----
-   手机上报 "Failed to fetch" 至少有三种完全不同的根因，光看这句没法定位：
-     ① 网络层不可达（DNS / TLS / 运营商拦域名 / 离线）——GET 就失败
-     ② 混合内容：HTTPS 页面请求 HTTP 后端，浏览器直接拦掉——往往是地址填错成 http://
-     ③ CORS：GET 能过但 POST 过不了（预检失败），或源站没给 Access-Control-Allow-Origin
-   所以这里按「简单 GET → 读云端 → 写云端」三层逐步测，每层都打点和计时，
-   失败在哪一层就直接指到对应原因，并把前端版本一起报出来（确认手机跑的是不是最新代码）。 */
+/* ---- 云端连通自检：区分网络不可达 / 后端报错 / 口令不对 ---- */
 function cloudSelfTest(){
   var out = document.getElementById('cloudTestOut');
   var L = [];
@@ -2297,7 +2392,7 @@ function cloudSelfTest(){
   line('页面来源：' + location.origin + '（' + location.protocol + '）');
   var api = apiBase();
   if(!api){
-    line('✗ 未填「国内云 API 地址」：这台设备当前走 Supabase，国内基本连不上。');
+    line('✗ 后端地址为空（不应出现，请刷新页面重试）。');
     line('  请在上方「☁️ 国内云 API 地址」填入 https://jjll-api-wqdnqmrmck.cn-hangzhou.fcapp.run 后保存。');
     return;
   }
@@ -2397,12 +2492,7 @@ function fetchImageData(url){
       });
     }).catch(function(){ return ''; });
 }
-/* 跨域友好的取图：<img> 加载 + canvas 重绘。
-   为什么需要：fetch 跨域要求服务端带 CORS 头，而 Supabase Storage / 各类图床
-   常常只允许 <img> 直接显示、不给 CORS 头——此时页面上图看得见，
-   但 fetch 会失败，于是「迁移照片」就报"连不上 Supabase"，其实图就在那儿。
-   注意：<img> 不加 crossOrigin 时画出来的 canvas 是 tainted，toDataURL 会抛安全错误，
-   所以这里两条路都试：先试 fetch（能拿到原图），失败再试 <img>+crossOrigin。 */
+/* 跨域取图：<img> 加载 + canvas 重绘 */
 function fetchImageDataViaImg(url){
   return new Promise(function(resolve){
     var img = new Image();
@@ -2434,7 +2524,7 @@ function fetchImageDataAny(url){
 function rebuildThumbs(){
   var out = document.getElementById('photoTestOut');
   var refs = [];
-  (state.recipeRecords || []).forEach(function(r){
+  photoHolders().forEach(function(r){
     (r.photos || []).forEach(function(p){ if(p && refs.indexOf(p) < 0) refs.push(p); });
   });
   var todo = refs.filter(function(r){ return (isHttpUrl(r) || isIdbRef(r)) && !thumbOf(r); });
@@ -2462,16 +2552,14 @@ function rebuildThumbs(){
 }
 document.getElementById('thumbRebuildBtn').addEventListener('click', rebuildThumbs);
 
-/* ---- 迁移照片到国内云：把引用从 supabase / 本机 换成 OSS ----
-   取图优先级（越靠前画质越好）：
-     1) 本机 IndexedDB 原图副本   2) 趁网络能连通，直接从原地址把原图拉下来
-     3) 走图片代理拉原图          4) 缩略图（最后一档，画质降级但至少能显示） */
-function photoSourceData(ref){
-  if(isIdbRef(ref)) return idbGet(ref.slice(4)).then(function(d){ return d || thumbOf(ref) || ''; });
+/* ---- 迁移旧照片到阿里云：优先本机原图，其次直连/中转，最后才用缩略图 ---- */
+function photoSourceData(ref, allowThumb){
+  if(allowThumb === undefined) allowThumb = true;
+  if(isIdbRef(ref)) return idbGet(ref.slice(4)).then(function(d){ return d || (allowThumb ? thumbOf(ref) : '') || ''; });
   if(!isHttpUrl(ref)) return Promise.resolve(ref);          // dataUrl 直接用
   return getLocalCopy(ref).then(function(d){
     if(d) return d;
-    /* 逐个通道试：直连 → fetchImageDataAny（内部先fetch再img+canvas）→ 中转（jjll-api /img 或用户图片代理）→ 缩略图 */
+    /* 逐个通道尝试：直连 → fetch/canvas → 中转 → 缩略图 */
     return fetchImageDataAny(ref).then(function(x){
       if(x) return x;
       var relays = imgRelays(ref);
@@ -2486,7 +2574,7 @@ function photoSourceData(ref){
     });
   }).then(function(d){
     if(d) return d;
-    var th = thumbOf(ref);                                   // 实在拿不到原图，退回缩略图
+    var th = allowThumb ? thumbOf(ref) : '';                 // 实在拿不到原图，退回缩略图（静默模式不降级）
     return th || '';
   });
 }
@@ -2496,8 +2584,7 @@ function migratePhotosToCloud(){
     if(out) out.textContent = '请先填写上方「国内云 API 地址」并点保存。';
     return;
   }
-  /* 迁移前先自检后端连通性：手机端「全部失败」时，第一时间就能分清
-     是「这台设备连不上后端」还是「照片本身拿不到」，不至于逐张白跑一遍。 */
+  /* 迁移前先检查后端连通性 */
   out && (out.textContent = '正在检测后端连通性…');
   fetch(ossUrl('/info'), { headers: ossHeaders(), cache: 'no-store' })
     .then(function(r){ return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
@@ -2510,17 +2597,22 @@ function migratePhotosToCloud(){
     })
     .then(function(okInfo){
       if(!okInfo) return;
-      doMigratePhotos(out);
+      doMigratePhotos(out, false);
     });
 }
-function doMigratePhotos(out){
+var _migrating = false;
+function doMigratePhotos(out, silent){
+  /* 未取到 OSS 域名时不迁移，否则会把已在 OSS 的照片也重复迁一遍 */
+  if(!OSS_PUBLIC_BASE){ if(out) out.textContent = '还没获取到云端图片域名（后端 /info 未返回），已中止迁移。请先点「云端连通自检」。'; return; }
+  if(_migrating) return;
   var refs = [];
-  (state.recipeRecords || []).forEach(function(r){
+  photoHolders().forEach(function(r){
     (r.photos || []).forEach(function(p){ if(p && refs.indexOf(p) < 0) refs.push(p); });
     if(r.photo && refs.indexOf(r.photo) < 0) refs.push(r.photo);
   });
   var todo = refs.filter(function(r){ return !isOssRef(r); });
-  if(!todo.length){ if(out) out.textContent = '所有照片都已在国內云上 ✓'; return; }
+  if(!todo.length){ if(out) out.textContent = '所有照片都已在阿里云上 ✓'; return; }
+  _migrating = true;
   var done = 0, ok = 0, fail = 0, lowQ = 0, noData = 0;
   var firstErr = '';
   var _hint = '';
@@ -2542,11 +2634,12 @@ function doMigratePhotos(out){
       if(noData) msg += noDataHint();
       if(!fail && ok) msg += '。已写入本地，正在同步到云端…';
       if(out) out.textContent = msg;
-      if(ok) saveState();
+      _migrating = false;
+      if(ok){ saveState(); if(silent) renderAll(); }
       return;
     }
     var ref = todo[idx++];
-    photoSourceData(ref).then(function(d){
+    photoSourceData(ref, !silent).then(function(d){
       if(d && isDataUrl(d) && d === thumbOf(ref)) lowQ++;   // 只剩缩略图可用，属降级迁移
       if(!d || !isDataUrl(d)){
         noData++;
@@ -2554,7 +2647,7 @@ function doMigratePhotos(out){
       }
       return ossUploadPhoto(d).then(function(url){
         var th = thumbOf(ref);
-        (state.recipeRecords || []).forEach(function(r){
+        photoHolders().forEach(function(r){
           var changed = false;
           (r.photos || []).forEach(function(p, i){ if(p === ref){ r.photos[i] = url; changed = true; } });
           if(r.photo === ref){ r.photo = url; changed = true; }
@@ -2586,11 +2679,10 @@ document.getElementById('cloudMigrateBtn').addEventListener('click', function(){
   ossLoadInfo().then(migratePhotosToCloud);
 });
 
-/* 静默版补建：本机只要能加载出原图就补缩略图并同步出去，
-   于是「这台设备看得到 → 换台设备也看得到」，不必手工操作。串行执行，不抢带宽。 */
+/* 静默补建缩略图并同步给其它设备，串行执行 */
 function autoRebuildThumbs(limit){
   var refs = [];
-  (state.recipeRecords || []).forEach(function(r){
+  photoHolders().forEach(function(r){
     (r.photos || []).forEach(function(p){
       if((isHttpUrl(p) || isIdbRef(p)) && !thumbOf(p) && refs.indexOf(p) < 0) refs.push(p);
     });
@@ -2808,11 +2900,587 @@ function renderCustomView(box, l2){
 }
 
 /* =========================================================
+   模块：玩玩玩玩 › 到此一游（足迹地球）
+   ========================================================= */
+/* 内置地名库（地名:纬度,经度）：输入里包含关键字即命中，取最长；没收录的可在地球上手点 */
+var GEO_TABLE = [
+  /* 中国：直辖市/省会/热门城市 */
+  '北京:39.9,116.4','上海:31.2,121.5','天津:39.1,117.2','重庆:29.6,106.5','广州:23.1,113.3','深圳:22.5,114.1',
+  '杭州:30.3,120.2','南京:32.1,118.8','苏州:31.3,120.6','无锡:31.5,120.3','宁波:29.9,121.6','温州:28.0,120.7',
+  '合肥:31.8,117.3','黄山:30.1,118.2','福州:26.1,119.3','厦门:24.5,118.1','泉州:24.9,118.6','南昌:28.7,115.9',
+  '济南:36.7,117.0','青岛:36.1,120.4','烟台:37.5,121.4','威海:37.5,122.1','郑州:34.7,113.6','洛阳:34.6,112.5',
+  '开封:34.8,114.3','武汉:30.6,114.3','宜昌:30.7,111.3','长沙:28.2,113.0','张家界:29.1,110.5','凤凰:27.9,109.6',
+  '成都:30.7,104.1','九寨沟:33.3,103.9','都江堰:31.0,103.6','乐山:29.6,103.8','峨眉山:29.6,103.3','贵阳:26.6,106.7',
+  '昆明:25.0,102.7','大理:25.6,100.2','丽江:26.9,100.2','香格里拉:27.8,99.7','西双版纳:22.0,100.8','拉萨:29.7,91.1',
+  '西安:34.3,108.9','兰州:36.1,103.8','敦煌:40.1,94.7','西宁:36.6,101.8','青海湖:36.9,100.2','银川:38.5,106.3',
+  '乌鲁木齐:43.8,87.6','喀什:39.5,76.0','伊犁:43.9,81.3','呼和浩特:40.8,111.7','呼伦贝尔:49.2,119.8','哈尔滨:45.8,126.6',
+  '长春:43.9,125.3','长白山:42.0,128.1','漠河:53.5,122.4','沈阳:41.8,123.4','大连:38.9,121.6','石家庄:38.0,114.5',
+  '秦皇岛:39.9,119.6','承德:40.9,117.9','太原:37.9,112.6','平遥:37.2,112.2','南宁:22.8,108.4','桂林:25.3,110.3',
+  '阳朔:24.8,110.5','北海:21.5,109.1','海口:20.0,110.3','三亚:18.3,109.5','香港:22.3,114.2','澳门:22.2,113.5',
+  '台北:25.0,121.6','高雄:22.6,120.3','台湾:23.7,121.0','珠海:22.3,113.6','佛山:23.0,113.1','东莞:23.0,113.7',
+  '惠州:23.1,114.4','汕头:23.4,116.7','扬州:32.4,119.4','镇江:32.2,119.5','常州:31.8,120.0','徐州:34.3,117.2',
+  '嘉兴:30.7,120.8','乌镇:30.6,120.5','西塘:30.9,120.9','绍兴:30.0,120.6','舟山:30.0,122.2','泰山:36.3,117.1',
+  '庐山:29.6,116.0','武夷山:27.8,118.0','上海迪士尼:31.15,121.66','香港迪士尼:22.31,114.04',
+  '浙江:29.2,120.1','江苏:33.0,119.8','广东:23.4,113.4','四川:30.6,102.7','云南:25.0,101.5','新疆:41.1,85.0',
+  '西藏:31.5,88.0','内蒙古:44.0,113.0','海南:19.2,109.8','福建:26.1,118.0','山东:36.3,118.0','河南:34.0,113.5',
+  '湖北:31.0,112.3','湖南:27.6,111.7','陕西:34.3,108.9','甘肃:36.0,103.8','青海:35.7,96.0','山西:37.6,112.3',
+  '河北:38.5,115.5','辽宁:41.3,122.6','吉林:43.7,126.2','黑龙江:47.5,128.0','安徽:31.9,117.3','江西:27.6,115.7',
+  '广西:23.7,108.3','贵州:26.8,106.8','宁夏:37.3,106.1',
+  /* 日韩 */
+  '日本:36.2,138.3','东京:35.7,139.7','大阪:34.7,135.5','京都:35.0,135.8','奈良:34.7,135.8','北海道:43.1,141.3',
+  '札幌:43.06,141.35','冲绳:26.2,127.7','福冈:33.6,130.4','名古屋:35.2,136.9','横滨:35.4,139.6','神户:34.7,135.2',
+  '广岛:34.4,132.5','箱根:35.2,139.0','富士山:35.36,138.73','东京迪士尼:35.63,139.88',
+  '韩国:36.5,127.9','首尔:37.6,127.0','釜山:35.2,129.1','济州岛:33.5,126.5',
+  /* 东南亚、南亚、西亚、非洲 */
+  '泰国:15.9,100.9','曼谷:13.75,100.5','清迈:18.8,99.0','普吉:7.9,98.4','新加坡:1.35,103.8','马来西亚:4.2,102.0',
+  '吉隆坡:3.1,101.7','槟城:5.4,100.3','兰卡威:6.35,99.8','亚庇:5.98,116.07','越南:14.1,108.3','河内:21.0,105.85',
+  '胡志明:10.8,106.7','岘港:16.05,108.2','印度尼西亚:-2.5,118.0','巴厘岛:-8.4,115.2','雅加达:-6.2,106.8',
+  '菲律宾:12.9,122.8','马尼拉:14.6,121.0','长滩岛:11.97,121.92','柬埔寨:12.6,105.0','吴哥:13.4,103.9','暹粒:13.36,103.86',
+  '老挝:19.9,102.5','琅勃拉邦:19.9,102.1','缅甸:21.9,96.0','文莱:4.5,114.7','马尔代夫:3.2,73.2','斯里兰卡:7.9,80.7',
+  '尼泊尔:28.4,84.1','加德满都:27.7,85.3','不丹:27.5,90.4','印度:20.6,79.0','新德里:28.6,77.2','泰姬陵:27.17,78.04',
+  '迪拜:25.2,55.3','阿联酋:24.0,54.0','阿布扎比:24.45,54.4','土耳其:39.0,35.2','伊斯坦布尔:41.0,29.0',
+  '卡帕多奇亚:38.65,34.85','埃及:26.8,30.8','开罗:30.0,31.2','以色列:31.0,34.9','约旦:31.2,36.5','摩洛哥:31.8,-7.1',
+  '肯尼亚:0.2,37.9','坦桑尼亚:-6.4,34.9','南非:-30.6,22.9','开普敦:-33.9,18.4','蒙古:46.9,103.8',
+  /* 欧洲 */
+  '法国:46.6,2.2','巴黎:48.86,2.35','英国:54.0,-2.5','伦敦:51.5,-0.12','爱丁堡:55.95,-3.19','意大利:42.8,12.8',
+  '罗马:41.9,12.5','威尼斯:45.44,12.3','佛罗伦萨:43.77,11.25','米兰:45.46,9.19','西班牙:40.2,-3.7','巴塞罗那:41.39,2.17',
+  '马德里:40.4,-3.7','葡萄牙:39.6,-8.0','里斯本:38.7,-9.14','德国:51.2,10.4','柏林:52.5,13.4','慕尼黑:48.14,11.58',
+  '荷兰:52.2,5.3','阿姆斯特丹:52.37,4.9','比利时:50.6,4.6','布鲁塞尔:50.85,4.35','瑞士:46.8,8.2','苏黎世:47.37,8.54',
+  '因特拉肯:46.69,7.86','奥地利:47.5,14.5','维也纳:48.2,16.4','捷克:49.8,15.5','布拉格:50.08,14.43','匈牙利:47.2,19.5',
+  '布达佩斯:47.5,19.04','希腊:39.0,22.0','雅典:37.98,23.73','圣托里尼:36.4,25.4','克罗地亚:45.1,15.2',
+  '杜布罗夫尼克:42.65,18.09','冰岛:64.96,-19.0','雷克雅未克:64.15,-21.9','挪威:61.0,9.0','奥斯陆:59.9,10.75',
+  '瑞典:62.0,15.0','斯德哥尔摩:59.3,18.07','芬兰:64.0,26.0','赫尔辛基:60.17,24.94','罗瓦涅米:66.5,25.7','丹麦:56.0,10.0',
+  '哥本哈根:55.68,12.57','俄罗斯:61.5,99.0','莫斯科:55.75,37.6','圣彼得堡:59.93,30.3','波兰:52.0,19.4','华沙:52.2,21.0',
+  '爱尔兰:53.2,-8.0','都柏林:53.35,-6.26','罗马尼亚:45.9,25.0','卢森堡:49.8,6.1','摩纳哥:43.74,7.42',
+  /* 美洲 */
+  '美国:39.8,-98.6','纽约:40.7,-74.0','洛杉矶:34.05,-118.24','旧金山:37.77,-122.42','拉斯维加斯:36.17,-115.14',
+  '西雅图:47.6,-122.3','芝加哥:41.88,-87.63','华盛顿:38.9,-77.04','波士顿:42.36,-71.06','迈阿密:25.76,-80.19',
+  '奥兰多:28.54,-81.38','夏威夷:20.8,-156.3','檀香山:21.3,-157.86','关岛:13.44,144.79','黄石:44.6,-110.5','大峡谷:36.1,-112.1',
+  '加拿大:56.1,-106.3','温哥华:49.28,-123.12','多伦多:43.65,-79.38','蒙特利尔:45.5,-73.57','班夫:51.18,-115.57',
+  '尼亚加拉:43.08,-79.07','墨西哥:23.6,-102.5','坎昆:21.16,-86.85','古巴:21.5,-79.5','巴西:-14.2,-51.9','里约:-22.9,-43.2',
+  '阿根廷:-38.4,-63.6','布宜诺斯艾利斯:-34.6,-58.4','秘鲁:-9.2,-75.0','马丘比丘:-13.16,-72.54','智利:-35.7,-71.5',
+  /* 大洋洲 */
+  '澳大利亚:-25.3,133.8','悉尼:-33.87,151.2','墨尔本:-37.8,145.0','布里斯班:-27.47,153.0','凯恩斯:-16.9,145.8',
+  '黄金海岸:-28.0,153.4','珀斯:-31.95,115.86','新西兰:-41.0,174.0','奥克兰:-36.85,174.76','皇后镇:-45.03,168.66',
+  '斐济:-17.7,178.1','塞班:15.2,145.75','帕劳:7.5,134.6','大溪地:-17.65,-149.4'
+].join(';');
+var _geoIdx = null;
+function geoIndex(){
+  if(_geoIdx) return _geoIdx;
+  _geoIdx = [];
+  GEO_TABLE.split(';').forEach(function(it){
+    var p = it.split(':'); if(p.length < 2) return;
+    var ll = p[1].split(',');
+    _geoIdx.push({ k: p[0], lat: parseFloat(ll[0]), lng: parseFloat(ll[1]) });
+  });
+  return _geoIdx;
+}
+function geocodeName(name){
+  var n = String(name || '').replace(/\s+/g, '');
+  if(!n) return null;
+  var best = null, list = geoIndex();
+  list.forEach(function(g){ if(n.indexOf(g.k) >= 0 && (!best || g.k.length > best.k.length)) best = g; });
+  if(!best && n.length >= 2){
+    list.forEach(function(g){ if(g.k.indexOf(n) === 0 && (!best || g.k.length < best.k.length)) best = g; });
+  }
+  return best;
+}
+
+/* ---------- 地球组件（canvas + d3-geo 正射投影，库在 globe-lib.js） ---------- */
+function createGlobe(canvas, opts){
+  opts = opts || {};
+  var LIB = window.JJLL_GEO;
+  var ctx = canvas.getContext('2d');
+  var W = 0, H = 0, R = 0;
+  var rot = opts.rotation ? opts.rotation.slice() : [-105, -24, 0];
+  var markers = [], selId = null, pickPt = null;
+  var dragging = false, lastX = 0, lastY = 0, moved = 0, idleUntil = 0, anim = null, alive = true, lastT = 0, raf = 0;
+  var proj, path, graticule;
+  if(LIB){
+    proj = LIB.geoOrthographic().clipAngle(90).precision(0.6);
+    path = LIB.geoPath(proj, ctx);
+    graticule = LIB.geoGraticule10();
+  }
+  function fit(){
+    var r = canvas.getBoundingClientRect();
+    if(!r.width || !r.height) return false;
+    var dpr = Math.min(2, window.devicePixelRatio || 1);
+    if(canvas.width !== Math.round(r.width * dpr) || canvas.height !== Math.round(r.height * dpr)){
+      canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    W = r.width; H = r.height; R = Math.min(W, H) / 2 - 8;
+    return true;
+  }
+  function center(){ return [-rot[0], -rot[1]]; }
+  function visible(lng, lat){ return LIB.geoDistance(center(), [lng, lat]) < Math.PI / 2 - 0.03; }
+  function pill(text, x, y){
+    ctx.font = '700 12px sans-serif';
+    var w = ctx.measureText(text).width + 16, h = 22;
+    ctx.fillStyle = 'rgba(255,255,255,.95)';
+    ctx.strokeStyle = '#FF8FA3'; ctx.lineWidth = 1.5;
+    var x0 = x - w / 2, y0 = y - h - 14, rad = 11;
+    ctx.beginPath();
+    ctx.moveTo(x0 + rad, y0); ctx.arcTo(x0 + w, y0, x0 + w, y0 + h, rad); ctx.arcTo(x0 + w, y0 + h, x0, y0 + h, rad);
+    ctx.arcTo(x0, y0 + h, x0, y0, rad); ctx.arcTo(x0, y0, x0 + w, y0, rad); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#4A3728'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, x, y0 + h / 2 + 1);
+  }
+  function draw(t){
+    if(!fit()) return;
+    ctx.clearRect(0, 0, W, H);
+    if(!LIB){
+      ctx.fillStyle = '#9C8879'; ctx.font = '14px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('地球资源加载失败，请刷新页面重试', W / 2, H / 2);
+      return;
+    }
+    proj.rotate(rot).translate([W / 2, H / 2]).scale(R);
+    var glow = ctx.createRadialGradient(W / 2, H / 2, R * 0.97, W / 2, H / 2, R * 1.13);
+    glow.addColorStop(0, 'rgba(255,143,163,.30)'); glow.addColorStop(1, 'rgba(255,143,163,0)');
+    ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+    var sea = ctx.createRadialGradient(W / 2 - R * 0.35, H / 2 - R * 0.4, R * 0.1, W / 2, H / 2, R);
+    sea.addColorStop(0, '#DDF1FB'); sea.addColorStop(1, '#9FD0EA');
+    ctx.beginPath(); path({ type: 'Sphere' }); ctx.fillStyle = sea; ctx.fill();
+    ctx.beginPath(); path(graticule); ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 0.6; ctx.stroke();
+    ctx.beginPath(); path(LIB.land); ctx.fillStyle = '#FFF1DA'; ctx.fill();
+    ctx.strokeStyle = '#EBCFA2'; ctx.lineWidth = 0.7; ctx.stroke();
+    ctx.beginPath(); path({ type: 'Sphere' }); ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 2; ctx.stroke();
+
+    var labelAt = null;
+    markers.forEach(function(m, i){
+      if(!visible(m.lng, m.lat)) return;
+      var xy = proj([m.lng, m.lat]); if(!xy) return;
+      var sel = (m.id === selId);
+      var ph = ((t || 0) / 1500 + i * 0.37) % 1;
+      ctx.beginPath(); ctx.arc(xy[0], xy[1], 6 + ph * 15, 0, 6.2832);
+      ctx.strokeStyle = 'rgba(255,107,133,' + (0.55 * (1 - ph)).toFixed(3) + ')'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.beginPath(); ctx.arc(xy[0], xy[1], sel ? 9 : 6, 0, 6.2832);
+      ctx.fillStyle = sel ? '#FFC93C' : '#FF6B85'; ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5; ctx.stroke();
+      if(sel) labelAt = { text: m.name, x: xy[0], y: xy[1] };
+    });
+    if(labelAt) pill(labelAt.text.length > 10 ? labelAt.text.slice(0, 10) + '…' : labelAt.text, labelAt.x, labelAt.y);
+    if(pickPt && visible(pickPt[0], pickPt[1])){
+      var pxy = proj(pickPt);
+      if(pxy){
+        var b = Math.abs(Math.sin((t || 0) / 260)) * 4;
+        ctx.beginPath(); ctx.arc(pxy[0], pxy[1] - 10 - b, 8, 0, 6.2832); ctx.fillStyle = '#FF6B85'; ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5; ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(pxy[0] - 5, pxy[1] - 6 - b); ctx.lineTo(pxy[0], pxy[1]); ctx.lineTo(pxy[0] + 5, pxy[1] - 6 - b);
+        ctx.fillStyle = '#FF6B85'; ctx.fill();
+      }
+    }
+  }
+  function frame(t){
+    if(!alive) return;
+    if(!document.body.contains(canvas)){ alive = false; return; }
+    raf = requestAnimationFrame(frame);
+    if(t - lastT < 32) return;
+    lastT = t;
+    var now = Date.now();
+    if(anim){
+      var k = Math.min(1, (now - anim.t0) / anim.dur), e = 1 - Math.pow(1 - k, 3);
+      rot[0] = anim.from[0] + (anim.to[0] - anim.from[0]) * e;
+      rot[1] = anim.from[1] + (anim.to[1] - anim.from[1]) * e;
+      if(k >= 1){ anim = null; idleUntil = now + 4000; }
+    }else if(!dragging && opts.autoRotate && now > idleUntil){
+      rot[0] += 0.18;
+    }
+    draw(t);
+  }
+  function localXY(e){ var r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+  function onClick(e){
+    if(!LIB) return;
+    var p = localXY(e);
+    if(opts.onPick){
+      var inv = proj.invert(p);
+      if(inv && isFinite(inv[0]) && visible(inv[0], inv[1])) opts.onPick(inv[0], inv[1]);
+      return;
+    }
+    var best = null, bd = 24;
+    markers.forEach(function(m){
+      if(!visible(m.lng, m.lat)) return;
+      var xy = proj([m.lng, m.lat]); if(!xy) return;
+      var d = Math.hypot(xy[0] - p[0], xy[1] - p[1]);
+      if(d < bd){ bd = d; best = m; }
+    });
+    if(best && opts.onMarkerClick) opts.onMarkerClick(best.id);
+  }
+  canvas.addEventListener('pointerdown', function(e){
+    dragging = true; moved = 0; lastX = e.clientX; lastY = e.clientY; anim = null;
+    try{ canvas.setPointerCapture(e.pointerId); }catch(x){}
+  });
+  canvas.addEventListener('pointermove', function(e){
+    if(!dragging) return;
+    var dx = e.clientX - lastX, dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY; moved += Math.abs(dx) + Math.abs(dy);
+    var k = 100 / Math.max(R, 80);
+    rot[0] += dx * k;
+    if(e.pointerType === 'mouse') rot[1] = Math.max(-80, Math.min(80, rot[1] - dy * k));
+  });
+  function end(e, cancelled){
+    if(!dragging) return;
+    dragging = false; idleUntil = Date.now() + 3500;
+    if(!cancelled && moved < 6) onClick(e);
+  }
+  canvas.addEventListener('pointerup', function(e){ end(e, false); });
+  canvas.addEventListener('pointercancel', function(e){ end(e, true); });
+  raf = requestAnimationFrame(frame);
+  return {
+    setMarkers: function(list){
+      var seen = {};
+      markers = (list || []).map(function(m){
+        var key = m.lat.toFixed(2) + ',' + m.lng.toFixed(2), n = seen[key] = (seen[key] || 0) + 1;
+        var lat = m.lat, lng = m.lng;
+        if(n > 1){                       // 同一个地方去过多次：错开一点，避免标记叠在一起点不到
+          var a = n * 2.4, r = 0.45 * Math.sqrt(n - 1);
+          lat += r * Math.sin(a); lng += r * Math.cos(a) / Math.max(0.3, Math.cos(lat * Math.PI / 180));
+        }
+        return { id: m.id, name: m.name, lat: lat, lng: lng };
+      });
+    },
+    setSelected: function(id){ selId = id; },
+    setPick: function(lng, lat){ pickPt = (lng == null) ? null : [lng, lat]; },
+    focus: function(lng, lat){
+      var to0 = -lng, d = ((to0 - rot[0] + 540) % 360) - 180;
+      anim = { from: rot.slice(), to: [rot[0] + d, Math.max(-60, Math.min(60, -lat))], t0: Date.now(), dur: 800 };
+    },
+    getRotation: function(){ return rot.slice(); },
+    destroy: function(){ alive = false; cancelAnimationFrame(raf); }
+  };
+}
+
+/* ---------- 数据与统计 ---------- */
+var placesUi = { selected: null, rot: null, globe: null, flipLast: null };
+function placeTime(p){
+  if(p.date){ var t = new Date(p.date + 'T00:00:00').getTime(); if(!isNaN(t)) return t; }
+  return p.createdAt || p.updatedAt || 0;
+}
+function sortedPlaces(){
+  return (state.places || []).slice().sort(function(a, b){
+    return (placeTime(b) - placeTime(a)) || ((b.createdAt || 0) - (a.createdAt || 0));
+  });
+}
+function placeYear(p){ return new Date(placeTime(p)).getFullYear(); }
+function placeStats(){
+  var all = state.places || [], names = {}, yearNames = {}, y = new Date().getFullYear();
+  all.forEach(function(p){
+    var k = String(p.name || '').trim().toLowerCase();
+    names[k] = 1;
+    if(placeYear(p) === y) yearNames[k] = 1;
+  });
+  return { total: Object.keys(names).length, thisYear: Object.keys(yearNames).length };
+}
+function memberChips(p){
+  var names = (p.members || []).map(function(id){
+    var u = (state.users || []).find(function(x){ return x.id === id; });
+    return u ? '<span class="pl-chip"><i style="background:' + esc(u.color) + '"></i>' + esc(u.name) + '</span>' : '';
+  }).join('');
+  return names ? '<div class="pl-members">' + names + '</div>' : '';
+}
+function fmtDate(d){ return d ? d.replace(/-/g, '.') : ''; }
+function openPlaceLightbox(p, i){
+  openLightbox(recordPhotos(p), i, p.name + (fmtDate(p.date) ? '　' + fmtDate(p.date) : '') + (p.note ? '　·　' + p.note : ''));
+}
+
+var PL_EMPTY_SVG =
+  '<svg viewBox="0 0 240 190" width="220" height="174" aria-hidden="true">' +
+  '<ellipse cx="120" cy="170" rx="70" ry="9" fill="#F0DFCB" opacity=".7"/>' +
+  '<circle cx="120" cy="92" r="64" fill="#CFE9F7"/>' +
+  '<path d="M78 70c10-14 28-18 40-10 8 6 4 16-6 18-10 2-12 12-4 18 6 5 2 14-8 12-14-4-30-20-22-38z" fill="#FFF1DA" stroke="#EBCFA2" stroke-width="1.5"/>' +
+  '<path d="M138 98c12-6 28 0 30 12 2 12-10 22-22 18-10-4-16-22-8-30z" fill="#FFF1DA" stroke="#EBCFA2" stroke-width="1.5"/>' +
+  '<circle cx="120" cy="92" r="64" fill="none" stroke="#fff" stroke-width="3"/>' +
+  '<path d="M52 150c26 18 70 22 104 4" fill="none" stroke="#FF8FA3" stroke-width="3" stroke-dasharray="2 8" stroke-linecap="round"/>' +
+  '<g transform="translate(150 20)"><path d="M0 22C-13 8-13-12 0-12S13 8 0 22z" fill="#FF6B85" stroke="#fff" stroke-width="3"/><circle cx="0" cy="-2" r="5" fill="#fff"/></g>' +
+  '<g transform="translate(40 128)"><rect x="-14" y="-12" width="28" height="22" rx="5" fill="#FFC93C" stroke="#fff" stroke-width="3"/><path d="M-6-12v-5h12v5" fill="none" stroke="#E0A800" stroke-width="3"/></g>' +
+  '<path d="M26 44l3 7 7 3-7 3-3 7-3-7-7-3 7-3z" fill="#FF8FA3"/><path d="M206 120l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill="#FFC93C"/>' +
+  '</svg>';
+
+function renderPlacesView(box){
+  if(placesUi.globe){ placesUi.rot = placesUi.globe.getRotation(); placesUi.globe.destroy(); placesUi.globe = null; }
+  var list = sortedPlaces();
+  if(!list.length){
+    box.innerHTML = '<div class="card pl-empty">' + PL_EMPTY_SVG +
+      '<p class="pl-empty-t">还没出去玩过？加第一站吧</p>' +
+      '<p class="mini-hint" style="margin:0 0 14px;">记下一家人去过的地方，用照片点亮属于你们的足迹地球</p>' +
+      '<button class="btn btn-primary" id="plAdd">＋ 加第一站</button></div>';
+    document.getElementById('plAdd').onclick = function(){ openPlaceModal(null); };
+    return;
+  }
+  var st = placeStats();
+  box.innerHTML =
+    '<div class="card pl-top">' +
+      '<div class="pl-stats"><div class="pl-stat">已去过<b>' + st.total + '</b>个地方</div>' +
+      '<div class="pl-stat">今年新增<b>' + st.thisYear + '</b>处</div></div>' +
+      '<div class="pl-actions"><button class="btn btn-soft" id="plRandom">🎲 随便翻翻</button>' +
+      '<button class="btn btn-primary" id="plAdd">＋ 加一站</button></div>' +
+    '</div>' +
+    '<div class="card pl-globe-card"><div class="pl-globe-wrap"><canvas id="plGlobe" class="pl-globe"></canvas></div>' +
+      '<div class="mini-hint" style="text-align:center;margin:6px 0 0;">拖动地球转一转，点亮起的标记看照片和笔记</div></div>' +
+    '<div id="plDetail"></div>' +
+    '<p class="section-title" style="margin:18px 4px 10px;">🧳 足迹时间线</p>' +
+    '<div class="pl-list" id="plList"></div>';
+  document.getElementById('plAdd').onclick = function(){ openPlaceModal(null); };
+  document.getElementById('plRandom').onclick = function(){ openFlip(); };
+
+  var cv = document.getElementById('plGlobe');
+  placesUi.globe = createGlobe(cv, {
+    autoRotate: true, rotation: placesUi.rot,
+    onMarkerClick: function(id){ selectPlace(id, false, true); }
+  });
+  placesUi.globe.setMarkers(list.filter(hasCoord).map(function(p){ return { id: p.id, name: p.name, lat: p.lat, lng: p.lng }; }));
+
+  document.getElementById('plList').innerHTML = list.map(function(p){
+    var ps = recordPhotos(p);
+    return '<div class="pl-card" data-id="' + p.id + '">' +
+      '<div class="pl-cover">' + (ps.length ? '<img data-photo="' + esc(ps[0]) + '" src="" alt="">' : '<div class="pl-nocover">📍</div>') +
+        (ps.length > 1 ? '<span class="pl-badge">📷 ' + ps.length + '</span>' : '') + '</div>' +
+      '<div class="pl-info"><div class="pl-name">' + esc(p.name) + (hasCoord(p) ? '' : ' <span class="pl-nopos">未定位</span>') + '</div>' +
+      (p.date ? '<div class="pl-date">' + esc(fmtDate(p.date)) + '</div>' : '') +
+      (p.note ? '<div class="pl-note-s">' + esc(p.note) + '</div>' : '') + memberChips(p) + '</div></div>';
+  }).join('');
+  Array.prototype.forEach.call(document.querySelectorAll('.pl-card'), function(el){
+    el.addEventListener('click', function(){ selectPlace(el.getAttribute('data-id'), true, true); });
+  });
+  hydratePhotos(document.getElementById('plList'));
+  if(placesUi.selected && !findPlace(placesUi.selected)) placesUi.selected = null;
+  if(placesUi.selected){ placesUi.globe.setSelected(placesUi.selected); renderPlaceDetail(); }
+}
+function hasCoord(p){ return typeof p.lat === 'number' && typeof p.lng === 'number' && isFinite(p.lat) && isFinite(p.lng); }
+function findPlace(id){ return (state.places || []).find(function(p){ return p.id === id; }); }
+
+function selectPlace(id, focus, scroll){
+  var p = findPlace(id); if(!p) return;
+  placesUi.selected = id;
+  if(placesUi.globe){
+    placesUi.globe.setSelected(id);
+    if(focus && hasCoord(p)) placesUi.globe.focus(p.lng, p.lat);
+  }
+  renderPlaceDetail();
+  var host = document.getElementById('plDetail');
+  if(scroll && host && host.scrollIntoView){
+    try{ (focus ? document.getElementById('plGlobe') : host).scrollIntoView({ behavior: 'smooth', block: focus ? 'center' : 'nearest' }); }catch(e){}
+  }
+}
+function renderPlaceDetail(){
+  var host = document.getElementById('plDetail'); if(!host) return;
+  var p = findPlace(placesUi.selected);
+  if(!p){ host.innerHTML = ''; return; }
+  var ps = recordPhotos(p);
+  host.innerHTML = '<div class="card pl-detail">' +
+    (ps.length ? '<div class="pl-photos">' + ps.map(function(x, i){
+      return '<button class="pl-photo" data-i="' + i + '"><img data-photo="' + esc(x) + '" src="" alt=""></button>';
+    }).join('') + '</div>' : '') +
+    '<div class="pl-d-head"><h3>📍 ' + esc(p.name) + '</h3>' + (p.date ? '<span class="pl-date">' + esc(fmtDate(p.date)) + '</span>' : '') + '</div>' +
+    memberChips(p) +
+    (p.note ? '<div class="pl-quote">“' + esc(p.note) + '”</div>' : '') +
+    '<div class="pl-d-actions">' +
+      (hasCoord(p) ? '' : '<button class="btn btn-soft" id="plLocate">📍 在地球上定位</button>') +
+      '<button class="btn btn-ghost" id="plEdit">✏️ 编辑</button><button class="btn btn-ghost" id="plDel">🗑️ 删除</button></div></div>';
+  hydratePhotos(host);
+  Array.prototype.forEach.call(host.querySelectorAll('.pl-photo'), function(b){
+    b.addEventListener('click', function(){ openPlaceLightbox(p, parseInt(b.getAttribute('data-i'), 10) || 0); });
+  });
+  document.getElementById('plEdit').onclick = function(){ openPlaceModal(p.id); };
+  document.getElementById('plDel').onclick = function(){
+    if(!confirm('确定删除「' + p.name + '」这一站吗？')) return;
+    state.places = state.places.filter(function(x){ return x.id !== p.id; });
+    if(state._del.places) state._del.places[p.id] = Date.now();
+    placesUi.selected = null;
+    saveState(); renderContent();
+  };
+  var loc = document.getElementById('plLocate');
+  if(loc) loc.onclick = function(){
+    openPickModal(null, function(lng, lat){
+      p.lng = lng; p.lat = lat; p.updatedAt = Date.now(); saveState(); renderContent(); selectPlace(p.id, true, false);
+    });
+  };
+}
+
+/* ---------- 添加 / 编辑 ---------- */
+var MAX_PL_PHOTOS = 9;
+var plEdit = { id: null, photos: [], members: [], coord: null, manual: false };
+function plUpdateGeo(){
+  var el = document.getElementById('plGeoState'); if(!el) return;
+  var name = document.getElementById('plName').value.trim();
+  if(!plEdit.manual){
+    var g = geocodeName(name);
+    plEdit.coord = g ? { lat: g.lat, lng: g.lng } : null;
+    plEdit.hit = g ? g.k : '';
+  }
+  if(!name){ el.innerHTML = ''; return; }
+  if(plEdit.coord){
+    el.innerHTML = '<span class="pl-geo-ok">📍 ' + (plEdit.manual ? '已在地球上选好位置' : '已定位到「' + esc(plEdit.hit) + '」') +
+      '</span> <a href="#" id="plPickBtn">换个位置</a>';
+  }else{
+    el.innerHTML = '<span class="pl-geo-no">🤔 没认出这个地名</span> <a href="#" id="plPickBtn">在地球上点一下选位置</a>' +
+      '<span class="pl-geo-sub">（不选也能保存，之后随时可以补）</span>';
+  }
+  var b = document.getElementById('plPickBtn');
+  if(b) b.onclick = function(e){
+    e.preventDefault();
+    openPickModal(plEdit.coord, function(lng, lat){ plEdit.coord = { lat: lat, lng: lng }; plEdit.manual = true; plUpdateGeo(); });
+  };
+}
+function renderPlPhotos(){
+  var wrap = document.getElementById('plPhotoThumbs');
+  var html = plEdit.photos.map(function(p, i){
+    var img = isDataUrl(p) ? '<img src="' + p + '">' : '<img data-photo="' + esc(p) + '" src="">';
+    return '<div class="photo-thumb pl-pthumb">' + img + '<button class="photo-thumb-del" data-rm="' + i + '" title="移除">✕</button></div>';
+  }).join('');
+  if(plEdit.photos.length < MAX_PL_PHOTOS) html += '<button type="button" class="pl-addtile" id="plAddTile">＋<span>选照片</span></button>';
+  wrap.innerHTML = html;
+  document.getElementById('plPhotoHint').textContent = '已选 ' + plEdit.photos.length + ' 张（最多 ' + MAX_PL_PHOTOS + ' 张）';
+  hydratePhotos(wrap);
+  Array.prototype.forEach.call(wrap.querySelectorAll('[data-rm]'), function(b){
+    b.addEventListener('click', function(){ plEdit.photos.splice(parseInt(b.getAttribute('data-rm'), 10), 1); renderPlPhotos(); });
+  });
+  var t = document.getElementById('plAddTile');
+  if(t) t.onclick = function(){ document.getElementById('plPhoto').click(); };
+}
+function renderPlMembers(){
+  var wrap = document.getElementById('plMembers');
+  if(!state.users.length){ wrap.innerHTML = '<span class="mini-hint" style="margin:0;">还没有家庭成员，可在左侧「＋」添加</span>'; return; }
+  wrap.innerHTML = state.users.map(function(u){
+    var on = plEdit.members.indexOf(u.id) >= 0;
+    return '<button type="button" class="pl-mchip' + (on ? ' on' : '') + '" data-u="' + u.id + '"><i style="background:' + esc(u.color) + '"></i>' + esc(u.name) + '</button>';
+  }).join('');
+  Array.prototype.forEach.call(wrap.querySelectorAll('[data-u]'), function(b){
+    b.addEventListener('click', function(){
+      var id = b.getAttribute('data-u'), k = plEdit.members.indexOf(id);
+      if(k >= 0) plEdit.members.splice(k, 1); else plEdit.members.push(id);
+      renderPlMembers();
+    });
+  });
+}
+function openPlaceModal(id){
+  var p = id ? findPlace(id) : null;
+  plEdit = { id: p ? p.id : null, photos: p ? recordPhotos(p).slice() : [], members: p ? (p.members || []).slice() : [],
+             coord: p && hasCoord(p) ? { lat: p.lat, lng: p.lng } : null, manual: !!(p && hasCoord(p)), hit: '' };
+  if(p && hasCoord(p)){
+    var g0 = geocodeName(p.name);
+    plEdit.manual = !(g0 && Math.abs(g0.lat - p.lat) < 0.01 && Math.abs(g0.lng - p.lng) < 0.01);
+    plEdit.hit = g0 ? g0.k : '';
+  }
+  document.getElementById('plModalTitle').textContent = p ? '✏️ 编辑这一站' : '📍 加一站';
+  document.getElementById('plName').value = p ? p.name : '';
+  document.getElementById('plDate').value = p ? (p.date || '') : '';
+  document.getElementById('plNote').value = p ? (p.note || '') : '';
+  document.getElementById('plPhoto').value = '';
+  renderPlMembers(); renderPlPhotos(); plUpdateGeo();
+  openModal('modalPlace');
+}
+document.getElementById('plName').addEventListener('input', function(){ plEdit.manual = false; plUpdateGeo(); });
+document.getElementById('plPhoto').addEventListener('change', function(e){
+  var files = Array.prototype.slice.call(e.target.files || []);
+  e.target.value = '';
+  if(!files.length) return;
+  var room = MAX_PL_PHOTOS - plEdit.photos.length;
+  if(room <= 0) return;
+  var overflow = files.length > room;
+  files = files.slice(0, room);
+  document.getElementById('plPhotoHint').textContent = '正在处理照片…';
+  Promise.all(files.map(function(f){ return compressImage(f, 1280, 0.78); })).then(function(list){
+    list.forEach(function(d){ if(d) plEdit.photos.push(d); });
+    renderPlPhotos();
+    if(overflow) alert('最多 ' + MAX_PL_PHOTOS + ' 张，已保留前 ' + room + ' 张。');
+  });
+});
+document.getElementById('plSaveBtn').addEventListener('click', function(){
+  var btn = this;
+  var name = document.getElementById('plName').value.trim();
+  if(!name){ alert('先写一下去了哪里吧～'); document.getElementById('plName').focus(); return; }
+  if(!plEdit.photos.length){ alert('选 1~' + MAX_PL_PHOTOS + ' 张合照，才能点亮这一站哦～'); return; }
+  var oldText = btn.textContent;
+  btn.disabled = true; btn.textContent = '正在保存照片…';
+  storePhotos(plEdit.photos).then(function(list){
+    var now = Date.now();
+    var fields = {
+      name: name, date: document.getElementById('plDate').value || '', photos: list,
+      note: document.getElementById('plNote').value.trim(), members: plEdit.members.slice(),
+      lat: plEdit.coord ? plEdit.coord.lat : null, lng: plEdit.coord ? plEdit.coord.lng : null, updatedAt: now
+    };
+    var rec = plEdit.id ? findPlace(plEdit.id) : null;
+    if(rec){ Object.keys(fields).forEach(function(k){ rec[k] = fields[k]; }); }
+    else{
+      rec = Object.assign({ id: uid('p'), createdAt: now }, fields);
+      state.places.push(rec);
+    }
+    placesUi.selected = rec.id;
+    saveState(); closeModal('modalPlace');
+    btn.disabled = false; btn.textContent = oldText;
+    renderContent();
+    if(placesUi.globe && hasCoord(rec)) placesUi.globe.focus(rec.lng, rec.lat);
+  }).catch(function(){
+    btn.disabled = false; btn.textContent = oldText;
+    alert('照片保存失败，请重试。');
+  });
+});
+
+/* ---------- 在地球上点选位置 ---------- */
+var pickState = { globe: null, pt: null, cb: null };
+function openPickModal(init, cb){
+  pickState.cb = cb; pickState.pt = init ? { lat: init.lat, lng: init.lng } : null;
+  openModal('modalPick');
+  setTimeout(function(){
+    if(pickState.globe) pickState.globe.destroy();
+    var cv = document.getElementById('plPickGlobe');
+    pickState.globe = createGlobe(cv, {
+      autoRotate: false, rotation: init ? [-init.lng, -Math.max(-60, Math.min(60, init.lat)), 0] : [-105, -25, 0],
+      onPick: function(lng, lat){
+        pickState.pt = { lat: lat, lng: lng };
+        pickState.globe.setPick(lng, lat);
+        document.getElementById('plPickOk').disabled = false;
+      }
+    });
+    if(init) pickState.globe.setPick(init.lng, init.lat);
+    document.getElementById('plPickOk').disabled = !pickState.pt;
+  }, 60);
+}
+function closePick(){
+  if(pickState.globe){ pickState.globe.destroy(); pickState.globe = null; }
+  closeModal('modalPick');
+}
+document.getElementById('plPickCancel').addEventListener('click', closePick);
+document.getElementById('plPickOk').addEventListener('click', function(){
+  var pt = pickState.pt, cb = pickState.cb;
+  closePick();
+  if(pt && cb) cb(pt.lng, pt.lat);
+});
+
+/* ---------- 随便翻翻 ---------- */
+function openFlip(){
+  var list = state.places || [];
+  if(!list.length) return;
+  var pool = list.length > 1 ? list.filter(function(p){ return p.id !== placesUi.flipLast; }) : list;
+  var p = pool[Math.floor(Math.random() * pool.length)];
+  placesUi.flipLast = p.id;
+  var ps = recordPhotos(p);
+  var card = document.getElementById('plFlipCard');
+  card.innerHTML =
+    (ps.length ? '<div class="pl-flip-img"><img data-photo="' + esc(ps[0]) + '" src="" alt=""></div>' : '<div class="pl-flip-img pl-nocover">📍</div>') +
+    '<div class="pl-flip-body"><div class="pl-name" style="font-size:20px;">📍 ' + esc(p.name) + '</div>' +
+    (p.date ? '<div class="pl-date">' + esc(fmtDate(p.date)) + '</div>' : '') + memberChips(p) +
+    (p.note ? '<div class="pl-quote">“' + esc(p.note) + '”</div>' : '') + '</div>';
+  card.classList.remove('flip'); void card.offsetWidth; card.classList.add('flip');
+  hydratePhotos(card);
+  document.getElementById('plFlipGo').onclick = function(){
+    closeModal('modalFlip');
+    if(view.l2 !== 'm_places'){ return; }
+    selectPlace(p.id, true, true);
+  };
+  openModal('modalFlip');
+}
+document.getElementById('plFlipAgain').addEventListener('click', openFlip);
+
+
+/* =========================================================
    模块管理
    ========================================================= */
 function renderMgmtView(box){
   var html = '<div class="card"><p class="section-title">⚙️ 模块管理</p>'+
-    '<div class="mini-hint">可以开关模块显示、重命名、修改图标（填入一个 emoji），或新增/删除一级与二级模块。二级模块若不是内置类型（冰箱食材/每日食谱/待办事项），将作为「自由记事」使用。</div>';
+    '<div class="mini-hint">可以开关模块显示、重命名、修改图标（填入一个 emoji），或新增/删除一级与二级模块。二级模块若不是内置类型（冰箱食材/每日食谱/待办事项/到此一游），将作为「自由记事」使用。</div>';
   state.modules.slice().sort(function(a,b){return a.order-b.order;}).forEach(function(g){
     html += '<div class="mgmt-group">';
     html += '<div class="mgmt-l1-row">'+
@@ -2826,7 +3494,7 @@ function renderMgmtView(box){
       html += '<div class="mgmt-l2-row">'+
         '<input type="text" class="mgmt-icon-input" data-l2icon="'+g.id+'|'+c.id+'" value="'+esc(c.icon)+'">'+
         '<input type="text" class="mgmt-name-input" data-l2name="'+g.id+'|'+c.id+'" value="'+esc(c.name)+'" style="width:130px;">'+
-        '<span class="mini-hint" style="margin:0;">'+(c.type==='custom'?'自由记事':c.type)+'</span>'+
+        '<span class="mini-hint" style="margin:0;">'+(c.type==='custom'?'自由记事':({fridge:'冰箱食材',recipe:'每日食谱',todo:'待办事项',places:'到此一游'}[c.type]||c.type))+'</span>'+
         '<label class="switch"><input type="checkbox" data-l2en="'+g.id+'|'+c.id+'" '+(c.enabled?'checked':'')+'><span class="switch-slider"></span></label>'+
         '<span style="flex:1;"></span>'+
         '<button class="icon-btn" title="删除" data-l2del="'+g.id+'|'+c.id+'">🗑️</button>'+
@@ -2960,59 +3628,29 @@ if(topSettingsBtn) topSettingsBtn.addEventListener('click', openApiModal);
 var aboutCloudBtn = document.getElementById('aboutCloudBtn');
 if(aboutCloudBtn) aboutCloudBtn.addEventListener('click', openApiFromAbout);
 
-/* 顶部引导条：还没配国内云地址时提示一次，关掉后不再打扰 */
-function renderCloudTip(){
-  var host = document.getElementById('cloudTipHost');
-  if(!host) return;
-  if(state.jjllApi){
-    host.innerHTML = '';
-    return;
-  }
-  try{ if(localStorage.getItem('jjll_tip_closed') === '1'){ host.innerHTML = ''; return; } }catch(e){}
-  host.innerHTML =
-    '<div class="cloud-tip">'+
-      '<span>☁️ 照片在别的网络下裂图 / 同步连不上？把数据和照片迁到国内云（约 1 元/月）即可解决。</span>'+
-      '<button class="btn btn-primary" id="cloudTipBtn" style="padding:6px 12px;font-size:13px;">去配置</button>'+
-      '<button class="ct-close" id="cloudTipClose" title="不再提示">×</button>'+
-    '</div>';
-  var b = document.getElementById('cloudTipBtn');
-  if(b) b.addEventListener('click', openApiModal);
-  var c = document.getElementById('cloudTipClose');
-  if(c) c.addEventListener('click', function(){
-    try{ localStorage.setItem('jjll_tip_closed','1'); }catch(e){}
-    host.innerHTML = '';
-  });
-}
+function safeRefreshAbout(){ try{ refreshAboutCloudState(); }catch(e){ if(window.console) console.error(e); } }
 function refreshAboutCloudState(){
   var el = document.getElementById('aboutCloudState');
   if(!el) return;
-  /* 未配国内云 → 明确警告：这台设备走的是 Supabase，国内常连不上，所以改动同步不到其它设备。
-     这是「手机改了、电脑没同步」最常见的原因，必须一眼看出来。 */
-  if(!state.jjllApi){
-    el.innerHTML = '未配置，当前走 Supabase（国内常连不上）'
-      + '<br><span style="color:#B23B3B;font-weight:600;">⚠️ 这台设备的改动无法同步给其它设备。'
-      + '请在下面「☁️ 接口与存储设置」里填写「国内云 API 地址」并保存。</span>';
-    return;
-  }
-  var base = '已启用国内云（' + state.jjllApi + '）';
+  var base = '云端存储：阿里云（' + esc(apiBase()) + '）';
   var syncTxt;
   if(syncFailMsg){
-    syncTxt = '<span style="color:#B23B3B;font-weight:600;">✗ 上次同步到云端失败：' + esc(syncFailMsg) + '</span>';
+    syncTxt = '<span style="color:#B23B3B;font-weight:600;">✗ ' + esc(syncFailMsg) + '</span>';
   }else if(syncLastOk){
     syncTxt = '✓ 上次同步成功：' + new Date(syncLastOk).toLocaleTimeString();
   }else{
-    syncTxt = '尚未同步过（改动保存后会自动上传）';
+    syncTxt = '已连接（改动保存后会自动上传）';
   }
   el.innerHTML = base + '<br>' + syncTxt
-    + '<br><span style="color:var(--text-light);font-size:12px;">前端版本 ' + FRONTEND_BUILD
+    + '<br><span style="color:var(--text-light);font-size:12px;">前端版本 ' + esc(FRONTEND_BUILD)
     + '　后端版本 ' + esc(lastBackendBuild || '未获取')
     + '　<a href="#" id="cloudSelfTestLink" style="color:var(--primary);">连通自检</a></span>';
   var lk = document.getElementById('cloudSelfTestLink');
   if(lk) lk.addEventListener('click', function(e){ e.preventDefault(); openApiModal(); setTimeout(cloudSelfTest, 120); });
 }
 document.getElementById('aboutBtn').addEventListener('click', function(){
-  refreshAboutCloudState();
-  openModal('modalAbout');
+  openModal('modalAbout');      // 先开弹窗，状态文字刷新失败也不能让弹窗打不开
+  safeRefreshAbout();
 });
 document.getElementById('switchFamilyBtn').addEventListener('click', function(){ closeModal('modalAbout'); openFamilyModal(); });
 document.getElementById('exportBtn').addEventListener('click', function(){
@@ -3052,51 +3690,32 @@ function renderAll(){
   renderContent();
 }
 
-function setupPWA(){
-  try{
-    var iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="%23FF8FA3"/><text x="50" y="66" font-size="52" text-anchor="middle">🍚</text></svg>';
-    var iconUrl = 'data:image/svg+xml,'+encodeURIComponent(iconSvg);
-    var manifest = {
-      name:'吉吉利利', short_name:'吉吉利利', start_url:'.', display:'standalone',
-      background_color:'#FFF7ED', theme_color:'#FF8FA3',
-      icons:[{src:iconUrl, sizes:'192x192', type:'image/svg+xml', purpose:'any'},{src:iconUrl, sizes:'512x512', type:'image/svg+xml', purpose:'any'}]
-    };
-    var appleIcon = document.createElement('link');
-    appleIcon.rel = 'apple-touch-icon';
-    appleIcon.href = 'icon-512.png';
-    document.head.appendChild(appleIcon);
-  }catch(e){ /* 忽略，不影响主功能 */ }
-}
-
 function init(){
   loadState();
   pickInitialView();
   renderAll();
-  renderDeco();
-  setupPWA();
-  renderCloudTip();        // 未配置国内云时，在页面顶部给出一条引导（可关闭）
-  refreshAboutCloudState();
-  /* 旧版本把照片 base64 存在 localStorage 里极易写满，首次启动迁移到 IndexedDB/Storage
-     （延后 1.5s 执行，避开首次云端同步，避免迁移结果被覆盖） */
+  /* 各启动步骤单独 try，互不影响 */
+  [renderDeco, safeRefreshAbout].forEach(function(fn){
+    try{ fn(); }catch(e){ if(window.console) console.error(e); }
+  });
+  /* 把旧版 localStorage 里的 base64 照片迁到 IndexedDB（延后执行，避开首次同步） */
   setTimeout(function(){
     migratePhotosOutOfStorage().then(function(changed){
       if(changed){ saveState(); renderAll(); }
-    });
+    }).catch(function(){});
   }, 1500);
-  /* 历史照片没有缩略图时，换网络就会裂图。本机只要能加载出原图就静默补一张并同步出去，
-     这样在能上网的设备上打开一次，其它设备（手机）同步后就能看到了。 */
   setTimeout(function(){
-    if(state && state.recipeRecords && state.recipeRecords.length) autoRebuildThumbs(30);
+    try{ if(photoHolders().length) autoRebuildThumbs(30); }catch(e){}
   }, 5000);
-  ossLoadInfo();   // 国内后端：先拿到 OSS 公开读域名，后续好判断照片是否已迁移
+  ossLoadInfo().then(function(){ safeRefreshAbout(); });   // 拿到 OSS 公开读域名与后端版本
   if(syncEnabled){
     if(getFamilyCode()){
-      syncLoad(function(){ renderAll(); subscribeRealtime(); });
+      startSync();
     }else{
       openFamilyModal();
     }
   }
-  /* 切回前台 / 获得焦点时立即重新拉取，避免「从桌面快捷方式打开看到旧内容」 */
+  /* 切回前台/获得焦点时立即重新拉取 */
   function pullWhenVisible(){
     if(!getFamilyCode()) return;
     if(document.visibilityState === 'visible'){
@@ -3108,7 +3727,7 @@ function init(){
   if('serviceWorker' in navigator){
     window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
   }
-  window.addEventListener('resize', function(){ renderDeco(); });
+  window.addEventListener('resize', function(){ try{ renderDeco(); }catch(e){} });
 }
 init();
 

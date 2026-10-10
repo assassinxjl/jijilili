@@ -57,7 +57,7 @@ const MAX_UPLOAD = 15 * 1024 * 1024;
 
 /* 每次改动代码都把 BUILD 改掉，这样打开根地址就能一眼确认「线上跑的是不是这一版」。
    排查部署时非常好用：返回的 buildId 对不上，说明代码包没真正生效。 */
-const BUILD_ID = 'v7-imgproxy-20261010-1230';
+const BUILD_ID = 'v8-cas-strict-20261010';
 
 /* 配置项来源，用于自检时一眼看出哪些没配上 */
 function configReport() {
@@ -657,7 +657,10 @@ const server = http.createServer((req, res) => {
       return oss('GET', 'data/' + code + '.json', null, '').then((r) => {
         const cur = r.status === 200 ? parseJSON(r.body) : null;
         const curTs = (cur && cur.ts) || 0;
-        if (curTs && inTs && inTs !== curTs) {
+        /* 云端已有数据时，写入方必须带着「我读到的那个 ts」来：对不上（包括客户端没读到、传 0）一律当冲突。
+           以前 inTs 为 0 会直接放行覆盖——客户端读取失败时拿本机数据把云端整个冲掉，
+           别的设备的改动就这样丢了。 */
+        if (curTs && inTs !== curTs) {
           return sendJSON(res, 200, { ok: false, conflict: true, ts: curTs, data: (cur && cur.data) || null });
         }
         const newTs = Date.now();
