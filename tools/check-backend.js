@@ -173,7 +173,7 @@ async function probeRoute(route) {
 
   /* 2.5 版本自检：后端每次改代码都会换 buildId */
   const pingJson = pingProbe.pathJson || pingProbe.queryJson || {};
-  const EXPECTED_BUILD = 'v3-diag-20261010-1100';
+  const EXPECTED_BUILD = 'v4-strevent-20261010-1105';
   if (pingJson.buildId) {
     if (pingJson.buildId === EXPECTED_BUILD) {
       line(true, '2.5 代码包版本', 'buildId=' + pingJson.buildId + '（✅ 与本地最新一致）');
@@ -219,13 +219,26 @@ async function probeRoute(route) {
     console.log('  🔎 后端看到的请求现场（diag）：');
     console.log('     rawPathname=' + d.rawPathname + '  resolvedPath=' + d.resolvedPath +
       '  viaQueryRoute=' + d.viaQueryRoute);
-    console.log('     event 顶层字段: ' + JSON.stringify(d.event.eventTopKeys));
+    /* event 形态是最关键的一项：object = 正常；string = FC 传的是字符串，
+       旧版代码会把字符串当对象用，导致所有字段 undefined、所有路由失效。 */
+    if (d.event.rawType && d.event.rawType !== 'object') {
+      console.log('     ⚠️ event 形态 = ' + d.event.rawType + '（不是对象！）');
+      console.log('        → 旧代码会把字符串当对象读，event.path 全是 undefined，所有子路由失效。');
+      console.log('        → 这就是「迁移照片全部失败」的根因。需要上传支持字符串 event 的后端。');
+      if (d.event.rawPreview) {
+        console.log('        内容前 200 字符: ' + String(d.event.rawPreview).replace(/\s+/g, ' ').slice(0, 200));
+      }
+    } else {
+      console.log('     event 形态 = object（正常）');
+    }
+    console.log('     event 顶层字段: ' + JSON.stringify(d.event.eventTopKeys).slice(0, 200) +
+      (d.event.eventTopKeyCount > 30 ? (' …（共 ' + d.event.eventTopKeyCount + ' 项，上面只显示前 30）') : ''));
     console.log('     headers: ' + JSON.stringify(d.event.headerKeys));
     if (d.event.stringValues && d.event.stringValues.length) {
-      console.log('     event 里的字符串值: ' + JSON.stringify(d.event.stringValues));
+      console.log('     event 里的字符串值: ' + JSON.stringify(d.event.stringValues).slice(0, 300));
     }
-    if (d.resolvedPath === '/') {
-      console.log('     ⚠️ resolvedPath 是 "/" —— 后端完全没拿到真实路径，这就是迁移照片失败的根因。');
+    if (d.resolvedPath === '/' && d.viaQueryRoute === false) {
+      console.log('     ⚠️ resolvedPath 是 "/" 且没走 __p 通道 —— 后端完全没拿到真实路径。');
     }
     console.log('');
   }

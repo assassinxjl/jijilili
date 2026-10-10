@@ -57,7 +57,7 @@ const MAX_UPLOAD = 15 * 1024 * 1024;
 
 /* 每次改动代码都把 BUILD 改掉，这样打开根地址就能一眼确认「线上跑的是不是这一版」。
    排查部署时非常好用：返回的 buildId 对不上，说明代码包没真正生效。 */
-const BUILD_ID = 'v3-diag-20261010-1100';
+const BUILD_ID = 'v4-strevent-20261010-1105';
 
 /* 配置项来源，用于自检时一眼看出哪些没配上 */
 function configReport() {
@@ -185,7 +185,13 @@ function flattenEvent(obj, depth, out) {
   depth = depth || 0;
   if (depth > 4 || obj === null || obj === undefined) return out;
   if (typeof obj !== 'object') {
-    if (typeof obj === 'string' && obj && obj.length < 500) out.push(obj);
+    /* 太长的字符串（多半是照片 base64）不收内容，但记录长度，
+       否则会出现「event 里明明有内容、stringValues 却是空数组」这种误导性现场。 */
+    if (typeof obj === 'string') {
+      if (!obj) return out;
+      if (obj.length < 500) out.push(obj);
+      else out.push('<长字符串 ' + obj.length + ' 字符，已省略>');
+    }
     return out;
   }
   if (Array.isArray(obj)) {
@@ -297,6 +303,71 @@ function makeFakeRes(resolve) {
 }
 function safeParse(s) { try { return JSON.parse(s); } catch (e) { return { ok: false, error: 'bad response' }; } }
 
+/* =====================================================================
+ * event 归一化 —— 本项目踩过的最大一个坑
+ *
+ * 实测（diag.eventTopKeys 返回 ["0","1",...,"1344"]，正是 Object.keys(字符串) 的特征）：
+ * 阿里云 FC 在某种触发器形态下，把整个请求以**字符串**形式传给 handler，
+ * 而不是我们预期的对象。于是 event.path / event.headers 全是 undefined，
+ * extractPath 永远返回 '/'，所有子路由（/state /upload /info）全部失效，
+ * 表现为「迁移照片到国内云」全部失败。
+ *
+ * 所以这里做三层兜底：
+ *   ① 已经是对象 → 直接用
+ *   ② 是字符串且能 JSON.parse 成对象 → 用解析结果
+ *   ③ 解析不了 → 视为「原始 HTTP 报文」，用正则从里面抠出方法/路径/头/body
+ * ===================================================================== */
+function parseRawHttp(text) {
+  const out = { headers: {} };
+  const lines = String(text).split(/\r?\n/);
+  /* 首行形如 "GET /state?code=abc HTTP/1.1" 或 "POST /upload?... HTTP/1.1" */
+  const m0 = String(lines[0] || '').match(/^([A-Z]+)\s+(\S+)\s+HTTP\/\d\.\d$/);
+  if (m0) {
+    out.httpMethod = m0[1];
+    out.path = m0[2];
+  }
+  /* 头部到空行为止 */
+  for (let i = 1; i < lines.length; i++) {
+    const ln = lines[i];
+    if (!ln) break;                                  // 空行 → 头部结束
+    const ci = ln.indexOf(':');
+    if (ci < 0) continue;
+    const k = ln.slice(0, ci).trim().toLowerCase();
+    if (k) out.headers[k] = ln.slice(ci + 1).trim();
+  }
+  const idx = lines.indexOf('');
+  if (idx >= 0) {
+    const body = lines.slice(idx + 1).join('\n');
+    if (body) { out.body = body; out.isBase64Encoded = false; }
+  }
+  /* 若首行没匹配上（可能是完整 URL 单独一行等形态），再全文扫一次路径 */
+  if (!out.path) {
+    const m1 = String(text).match(/\b(https?:\/\/[^\s"']+|\/(?:ping|diag|info|state|upload)(?:\?[^\s"']*)?)/);
+    if (m1) out.path = m1[1];
+  }
+  if (!out.httpMethod && /\bPOST\b/.test(text)) out.httpMethod = 'POST';
+  return out;
+}
+function normalizeEvent(event) {
+  if (event === undefined || event === null) return {};
+  if (typeof event === 'object') {
+    /* Buffer 形态（部分运行时直接给 Buffer）→ 按 utf8 当文本处理 */
+    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(event)) {
+      return normalizeEvent(event.toString('utf8'));
+    }
+    return event;
+  }
+  const text = String(event);
+  /* ① 先当 JSON 试 */
+  try {
+    const j = JSON.parse(text);
+    if (j && typeof j === 'object') return j;
+  } catch (e) {}
+  /* ② 当原始 HTTP 报文解析 */
+  try { return parseRawHttp(text); } catch (e) {}
+  return {};
+}
+
 /* 阿里云内置运行时（事件函数）入口 */
 exports.handler = function (event, context) {
   return new Promise((resolve) => {
@@ -310,7 +381,9 @@ exports.handler = function (event, context) {
     function done(r) { if (settled) return; settled = true; clearTimeout(timer); resolve(r); }
 
     try {
-      const req = makeFakeReq(event || {});
+      const evt = normalizeEvent(event);
+      const req = makeFakeReq(evt);
+      req._rawEvent = event;
       const res = makeFakeRes(done);
       server.emit('request', req, res);
     } catch (e) {
@@ -373,9 +446,22 @@ const server = http.createServer((req, res) => {
       };
     }
     picked.headerKeys = Object.keys(lastEvent.headers || {});
-    picked.eventTopKeys = Object.keys(lastEvent);
+    /* eventTopKeys 在 event 是字符串时会返回 ["0","1",...,"1344"] 共上千项，
+       原样输出会把整个响应撑爆（用户复制粘贴都费劲），这里截断并标注总数。 */
+    const topKeys = Object.keys(lastEvent);
+    picked.eventTopKeyCount = topKeys.length;
+    picked.eventTopKeys = topKeys.slice(0, 30);
     /* 只列出 event 里所有短字符串（不含照片 base64），直接看路径藏在哪个键里 */
     picked.stringValues = flattenEvent(lastEvent, 0, []).filter((s) => s && s.length < 120).slice(0, 30);
+    /* 关键诊断：event 到底是什么形态。type=string 说明 FC 传的是字符串而非对象，
+       这就是所有路由失效的根因。同时把字符串前 600 字符原样带出来（不含照片 base64 的场景）。 */
+    const raw = req._rawEvent;
+    if (raw !== undefined && raw !== null) {
+      picked.rawType = (typeof Buffer !== 'undefined' && Buffer.isBuffer(raw)) ? 'Buffer' : (typeof raw);
+      if (typeof raw === 'string') picked.rawPreview = raw.slice(0, 600);
+    } else {
+      picked.rawType = '(undefined)';
+    }
     return {
       ok: true, buildId: BUILD_ID,
       rawPathname: rawPathname, resolvedPath: pathname,
