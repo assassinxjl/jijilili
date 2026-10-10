@@ -173,7 +173,7 @@ async function probeRoute(route) {
 
   /* 2.5 版本自检：后端每次改代码都会换 buildId */
   const pingJson = pingProbe.pathJson || pingProbe.queryJson || {};
-  const EXPECTED_BUILD = 'v5-buffer-20261010-1112';
+  const EXPECTED_BUILD = 'v6-queryparams-20261010-1120';
   if (pingJson.buildId) {
     if (pingJson.buildId === EXPECTED_BUILD) {
       line(true, '2.5 代码包版本', 'buildId=' + pingJson.buildId + '（✅ 与本地最新一致）');

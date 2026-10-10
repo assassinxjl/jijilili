@@ -57,7 +57,7 @@ const MAX_UPLOAD = 15 * 1024 * 1024;
 
 /* 每次改动代码都把 BUILD 改掉，这样打开根地址就能一眼确认「线上跑的是不是这一版」。
    排查部署时非常好用：返回的 buildId 对不上，说明代码包没真正生效。 */
-const BUILD_ID = 'v5-buffer-20261010-1112';
+const BUILD_ID = 'v6-queryparams-20261010-1120';
 
 /* 配置项来源，用于自检时一眼看出哪些没配上 */
 function configReport() {
@@ -206,6 +206,10 @@ function flattenEvent(obj, depth, out) {
 }
 function extractPath(event) {
   const cands = [];
+  /* ★ 最优先：queryParameters.__p —— 本项目实测该触发器走的就是这个字段，
+     且 rawPath 会是 "/"（FC 把 query 剥离到 queryParameters 了）。 */
+  const qp = event.queryParameters || {};
+  if (qp && typeof qp === 'object' && qp.__p) cands.push(qp.__p);
   if (event.path) cands.push(event.path);
   if (event.rawPath) cands.push(event.rawPath);
   if (event.requestContext) {
@@ -213,14 +217,19 @@ function extractPath(event) {
     if (event.requestContext.http && event.requestContext.http.path) cands.push(event.requestContext.http.path);
   }
   for (let i = 0; i < cands.length; i++) {
+    /* 跳过 "/" 这种无信息量的值，继续试下一个候选 */
     const p = normalizePath(cands[i]);
-    if (p) return p;
+    if (p && p !== '/') return p;
   }
   /* 兜底 1：把 event 里所有字符串值收集起来，逐个扫已知路由。
      注意不能直接 JSON.stringify 整个 event —— body 可能是几 MB 的 base64 照片，
-     那样既慢又可能误命中。这���只扫长度 < 500 的短字符串。 */
+     那样既慢又可能误命中。这里只扫长度 < 500 的短字符串。 */
   try {
-    const strs = flattenEvent(event, 0, []);
+    /* 复制一份并剔除 body：家庭数据 JSON 里可能出现 /state /info 等字样，
+       不排除就有误判成某个路由的风险。 */
+    const scan = Object.assign({}, event);
+    delete scan.body;
+    const strs = flattenEvent(scan, 0, []);
     for (let i = 0; i < strs.length; i++) {
       const s = strs[i];
       for (let r = 0; r < KNOWN_ROUTES.length; r++) {
@@ -235,11 +244,14 @@ function makeFakeReq(event) {
   const hs = event.headers || {};
   Object.keys(hs).forEach((k) => { headers[k.toLowerCase()] = hs[k]; });
 
-  /* query 有三种可能来法，全都要兼容：
-     ① event.queryString（字符串，可能带前导 ?）
+  /* query 有五种可能来法，全都要兼容（少一个就可能让 code 变 undefined → 读错家庭数据）：
+     ① event.queryString / event.rawQueryString（字符串，可能带前导 ?）
      ② event.queryStringParameters（对象 {code:"xxx"}）
-     ③ 直接挂在 path 上（完整 URL 形态，extractPath 剥 query 时被丢掉了）
-     任何一种缺失都会导致 code 变 undefined → 读错家庭数据。 */
+     ③ event.queryParameters（对象）——★ 本项目实测该触发器就是这个字段！
+        FC 把 query 全剥离到这儿，rawPath 只剩 "/"。漏读它 __p/code 全丢，必现路由失效。
+     ④ 直接挂在 path/rawPath 上（完整 URL 形态）
+     ⑤ requestContext.http.path 上内联的 ?xxx
+     另外各来源可能是字符串也可能是对象，统一用 addQuery 归一化。 */
   let queryString = '';
   function addQuery(s) {
     if (!s) return;
@@ -247,15 +259,27 @@ function makeFakeReq(event) {
     if (!t) return;
     if (queryString) { queryString += '&' + t; } else { queryString = t; }
   }
+  function addQueryObject(o) {
+    if (!o || typeof o !== 'object') return;
+    const ks = Object.keys(o);
+    if (!ks.length) return;
+    addQuery(ks.map((k) => {
+      /* 值可能是数组（同一 key 出现多次），取第一个非空即可 */
+      let v = o[k];
+      if (Array.isArray(v)) v = (v.filter((x) => x !== undefined && x !== null && x !== '')[0] || '');
+      if (v === undefined || v === null) v = '';
+      return encodeURIComponent(k) + '=' + encodeURIComponent(v);
+    }).join('&'));
+  }
   const qs = event.queryString || event.rawQueryString || '';
   if (typeof qs === 'string' && qs) {
     addQuery(qs);
   } else if (qs && typeof qs === 'object') {
-    addQuery(Object.keys(qs).map((k) => encodeURIComponent(k) + '=' + encodeURIComponent(qs[k])).join('&'));
+    addQueryObject(qs);
   }
-  if (event.queryStringParameters && typeof event.queryStringParameters === 'object') {
-    addQuery(Object.keys(event.queryStringParameters).map((k) => encodeURIComponent(k) + '=' + encodeURIComponent(event.queryStringParameters[k])).join('&'));
-  }
+  addQueryObject(event.queryStringParameters);
+  /* ★ 关键：FC 的 v1 事件格式把 query 放在 queryParameters（对象） */
+  addQueryObject(event.queryParameters);
   ['path', 'rawPath'].forEach((k) => {
     if (event[k] && String(event[k]).indexOf('?') >= 0) addQuery(String(event[k]).split('?')[1]);
   });
@@ -469,7 +493,8 @@ const server = http.createServer((req, res) => {
   function buildDiag() {
     const lastEvent = req._event || {};
     const picked = {};
-    ['path', 'rawPath', 'httpMethod', 'method', 'queryString', 'queryStringParameters', 'isBase64Encoded'].forEach((k) => {
+    ['path', 'rawPath', 'httpMethod', 'method', 'queryString', 'queryStringParameters',
+      'queryParameters', 'rawQueryString', 'version', 'isBase64Encoded'].forEach((k) => {
       if (lastEvent[k] !== undefined) picked[k] = lastEvent[k];
     });
     if (lastEvent.requestContext) {
