@@ -583,7 +583,7 @@
   <div class="modal-box">
     <p class="modal-title">⚙️ 接口与存储设置</p>
     <div class="mini-hint">支持任意 OpenAI 兼容接口（如 OpenAI / DeepSeek / Moonshot 等），密钥仅保存在本机浏览器 localStorage 中，不会上传任何服务器。</div>
-    <div class="mini-hint" style="margin-top:6px;color:var(--text-light);">若浏览器提示 Failed to fetch（跨域被拦）：可在下方「代理地址」填入一个代理（如 Cloudflare Worker）；留空则尝试走 Supabase 函数代理（仅用于 AI 推荐，与数据存储无关）。</div>
+    <div class="mini-hint" style="margin-top:6px;color:var(--text-light);">若浏览器提示 Failed to fetch（跨域被拦）：可在下方「代理地址」填入一个代理（如 Cloudflare Worker）。</div>
     <div class="field-label">接口地址 Endpoint</div>
     <input class="field-input" id="apiEndpoint" placeholder="https://api.openai.com/v1/chat/completions">
     <div class="field-label">API Key</div>
@@ -595,7 +595,7 @@
     <div class="field-label">访问口令（若后端设置了 JJLL_TOKEN 才填）</div>
     <input class="field-input" id="jjllToken" placeholder="留空表示后端未设口令" type="password">
     <div class="mini-hint" style="margin-top:6px;color:var(--text-light);">
-      家庭数据与照片现在全部存放在阿里云（FC + OSS），不再写入 Supabase。
+      家庭数据与照片全部存放在阿里云（FC + OSS）。
       此地址仅保存在本机、不参与同步；留空即使用代码内置的默认地址。口令同样仅存本机。
     </div>
     <div class="modal-actions" style="margin-top:8px;">
@@ -608,7 +608,7 @@
     <div class="field-label">🖼️ 图片代理地址（可选，多个用逗号分隔）</div>
     <input class="field-input" id="photoProxy" placeholder="https://jijilili-photo.xxx.workers.dev">
     <div class="mini-hint" style="margin-top:6px;color:var(--text-light);">
-      新照片直接存阿里云；旧照片（原存在 Supabase）会自动迁移。每张照片还会额外同步一张小缩略图，
+      新照片直接存阿里云；旧照片会自动迁移。每张照片还会额外同步一张小缩略图，
       <b>只要数据能同步就一定能看到图</b>；网络好时再自动换成高清。填入图片代理后，高清图改走代理加载（更快更稳），
       失败会自动回退直连 → 本机副本。该地址会随家庭数据同步，填一次全家生效。
     </div>
@@ -732,14 +732,6 @@
    ========================================================= */
 var STORAGE_KEY = 'jjll_state_v1';
 
-/* =========================================================
-   多用户同步配置（Supabase）
-   把下面的 SUPABASE_URL / SUPABASE_ANON 替换成你的项目信息即可
-   （Supabase Dashboard → Project Settings → API）。
-   不填则自动退回纯本地模式，不影响原有功能。
-   ========================================================= */
-var SUPABASE_URL = 'https://lrjiiacbzpcfpstxakuu.supabase.co';   // Supabase 项目 URL
-var SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxyamlpYWNienBjZnBzdHhha3V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczNjE3MTAsImV4cCI6MjEwMjkzNzcxMH0.EkoYcU_L7nn7A44fj4Q86yVdPxwL4L1VWhinS53MkMA';   // anon public key
 var FAMILYCODE_KEY = 'jjll_family_code';
 /* 前端版本号（显示在「关于 & 数据」） */
 var FRONTEND_BUILD = 'web-20261011-globe-zoom';
@@ -776,9 +768,6 @@ function ossUrl(route, params){
 }
 
 var syncEnabled = true;
-/* Supabase 仅保留「只读」用途：一次性把旧数据导入阿里云（见 legacyImportOnce），之后不再写入。 */
-function sbBase(){ return (SUPABASE_URL || '').replace(/\/+$/,'') + '/rest/v1/families'; }
-function sbHeaders(){ return { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON }; }
 var currentChannel = null;   // 复用作轮询定时器
 var lastSeenTs = 0;
 var justSynced = 0;
@@ -1004,40 +993,14 @@ function ossLoadInfo(){
 }
 function isOssRef(u){ return !!OSS_PUBLIC_BASE && isHttpUrl(u) && String(u).indexOf(OSS_PUBLIC_BASE) === 0; }
 
-/* 一次性迁移：只读拉取 Supabase 旧数据并入本机，随后写入阿里云（每台设备每个家庭码一次） */
-function legacyImportOnce(cb){
-  var code = getFamilyCode();
-  var flag = 'jjll_sb_imported_' + code;
-  try{ if(localStorage.getItem(flag) === '1'){ if(cb) cb(); return; } }catch(e){}
-  fetchWithTimeout(sbBase() + '?code=eq.' + encodeURIComponent(code) + '&select=data&limit=1',
-                   { headers: sbHeaders(), cache: 'no-store' }, 10000)
-    .then(function(r){ return r.json(); })
-    .then(function(rows){
-      if(!Array.isArray(rows)) return;               // 报错对象：不算成功，不打标记
-      var d = rows[0] && rows[0].data;
-      if(d){
-        var keepUser = state.currentUserId, keepApi = state.apiConfig, keepJjll = state.jjllApi;
-        state = mergeState(state, d);
-        if(keepUser && state.users && state.users.some(function(u){ return u.id === keepUser; })) state.currentUserId = keepUser;
-        if(keepApi) state.apiConfig = keepApi;
-        state.jjllApi = keepJjll || '';
-        normalizeState();
-        saveState();                                 // 保存 → 合并后写入阿里云
-      }
-      try{ localStorage.setItem(flag, '1'); }catch(e){}
-    })
-    .catch(function(){})
-    .then(function(){ if(cb) cb(); });
-}
 /* 启动 / 进入家庭后的统一流程 */
 function startSync(){
   syncLoad(function(){
     renderAll();
     subscribeRealtime();
     if(!syncFailMsg) syncSave();                     // 本机独有的条目也推上去（首次迁移、离线期间的改动）
-    legacyImportOnce(function(){ renderAll(); });
     setTimeout(function(){ uploadPendingIdbPhotos(); }, 3000);
-    setTimeout(function(){                           // 静默迁移 Supabase 旧照片到 OSS（拿不到原图的不动）
+    setTimeout(function(){                           // 静默迁移旧照片到 OSS（拿不到原图的不动）
       ossLoadInfo().then(function(base){ if(base) doMigratePhotos(null, true); });
     }, 9000);
   });
@@ -1257,13 +1220,10 @@ function mergeState(local, remote){
 }
 
 /* ============ 照片存储层 ============
-   照片原本以 base64 塞进 localStorage，而 localStorage 只有 5~10MB，几十张照片就写满，
-   导致「保存失败」。现在改为：
-     优先上传到 Supabase Storage → state 里存 https 图片地址（约 100 字节）；
-     若 bucket 未建或上传失败 → 降级存 IndexedDB（本机可达数百 MB）→ state 里存 idb:xxx 引用。
+   照片上传到阿里云 OSS → state 里存 https 图片地址（约 100 字节）；
+   上传失败时降级存 IndexedDB（本机可达数百 MB）→ state 里存 idb:xxx 引用。
    这样 localStorage 与云端同步的数据都只剩引用，不再被照片撑爆。
 =================================== */
-var PHOTO_BUCKET = 'photos';
 /* 可选：图片代理地址（如 https://xxx.workers.dev） */
 var PHOTO_PROXY_DEFAULT = '';
 var photoCache = Object.create(null);   // 引用 -> 可直接显示的 src
@@ -1517,7 +1477,7 @@ function imgRelays(ref){
 function buildCandidates(ref){
   if(!isHttpUrl(ref)) return [];
   var m = String(ref).match(/\/storage\/v1\/object\/public\/(.+)$/);
-  if(!m) return [{ k:'direct', url: ref }];      // 非 Supabase 地址（如 OSS 直连）就直接取，无需代理
+  if(!m) return [{ k:'direct', url: ref }];      // 非 Supabase 格式（如 OSS 直连）就直接取，无需代理
   var relays = imgRelays(ref).map(function(u){ return { k:'proxy', url: u }; });
   var direct = [{ k:'direct', url: ref }];
   /* 记忆上次成功通道：上次直连成功 → 直连优先；上次靠中转 → 中转优先 */
@@ -2737,13 +2697,8 @@ async function callAIRecommend(){
   try{
     var text;
     var proxyUrl = (cfg.proxyUrl||'').trim();
-    var useSupabaseAuth = false;
-    if(!proxyUrl && syncEnabled && SUPABASE_URL && SUPABASE_ANON){
-      proxyUrl = (SUPABASE_URL||'').replace(/\/+$/,'') + '/functions/v1/ai-proxy';
-      useSupabaseAuth = true;
-    }
     if(proxyUrl){
-      text = await callAIViaProxy(cfg, prompt, proxyUrl, useSupabaseAuth);
+      text = await callAIViaProxy(cfg, prompt, proxyUrl);
     }else{
       text = await callAIDirect(cfg, prompt);
     }
@@ -2766,9 +2721,8 @@ async function callAIDirect(cfg, prompt){
   var data = await resp.json();
   return extractAIText(data);
 }
-async function callAIViaProxy(cfg, prompt, proxyUrl, useSupabaseAuth){
+async function callAIViaProxy(cfg, prompt, proxyUrl){
   var headers = {'Content-Type':'application/json'};
-  if(useSupabaseAuth){ headers['apikey'] = SUPABASE_ANON; headers['Authorization'] = 'Bearer '+SUPABASE_ANON; }
   var resp = await fetch(proxyUrl, {
     method:'POST',
     headers: headers,
